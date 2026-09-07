@@ -27,7 +27,7 @@ interface NotesContextType {
     active: number;
     archive: number;
     trash: number;
-    reminders: number;
+    checklists: number;
     important: number;
     imageNotes: number;
     voiceNotes: number;
@@ -60,7 +60,7 @@ interface NotesContextType {
   changeColor: (id: string, color: NoteColorId) => Promise<void>;
   addLabel: (id: string, label: string) => Promise<void>;
   removeLabel: (id: string, label: string) => Promise<void>;
-  setReminder: (id: string, date: string | null) => Promise<void>;
+  toggleCheckItem: (noteId: string, itemId: string) => Promise<void>;
 }
 
 const NotesContext = createContext<NotesContextType | undefined>(undefined);
@@ -205,7 +205,9 @@ export function NotesProvider({ children }: { children: React.ReactNode }) {
       active: notes.filter((n) => !n.isArchived && !n.isTrashed).length,
       archive: notes.filter((n) => n.isArchived && !n.isTrashed).length,
       trash: notes.filter((n) => n.isTrashed).length,
-      reminders: notes.filter((n) => !n.isArchived && !n.isTrashed && Boolean(n.reminder)).length,
+      checklists: notes.filter(
+        (n) => !n.isArchived && !n.isTrashed && (n.noteType === 'checklist' || (n.checklist && n.checklist.length > 0))
+      ).length,
       important: notes.filter((n) => !n.isArchived && !n.isTrashed && Boolean(n.isImportant)).length,
       imageNotes: notes.filter(
         (n) => !n.isArchived && !n.isTrashed && (n.noteType === 'image' || (n.images && n.images.length > 0))
@@ -419,15 +421,16 @@ export function NotesProvider({ children }: { children: React.ReactNode }) {
     await updateNote(id, { labels: updatedLabels });
   };
 
-  // SET / REMOVE REMINDER
-  const setReminder = async (id: string, date: string | null): Promise<void> => {
-    if (!requireAuth('set reminders')) return;
-    await updateNote(id, { reminder: date });
-    if (date) {
-      toast.success('Reminder saved');
-    } else {
-      toast('Reminder removed');
-    }
+  // TOGGLE CHECKLIST ITEM
+  const toggleCheckItem = async (noteId: string, itemId: string): Promise<void> => {
+    const targetNote = notes.find((n) => n.id === noteId);
+    if (!targetNote || !targetNote.checklist) return;
+
+    const updatedChecklist = targetNote.checklist.map((item) =>
+      item.id === itemId ? { ...item, completed: !item.completed } : item
+    );
+
+    await updateNote(noteId, { checklist: updatedChecklist });
   };
 
   // BATCH TRASH
@@ -721,7 +724,7 @@ export function NotesProvider({ children }: { children: React.ReactNode }) {
         changeColor,
         addLabel,
         removeLabel,
-        setReminder,
+        toggleCheckItem,
       }}
     >
       {children}

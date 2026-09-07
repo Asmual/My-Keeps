@@ -1,9 +1,8 @@
-import React from 'react';
 import {
   Lightbulb,
   Archive,
   Trash2,
-  Bell,
+  CheckSquare,
   SearchX,
   Tag,
   Star,
@@ -16,7 +15,7 @@ type EmptyStateType =
   | 'notes'
   | 'archive'
   | 'trash'
-  | 'reminders'
+  | 'checklists'
   | 'search'
   | 'label'
   | 'important'
@@ -55,11 +54,11 @@ export function EmptyState({ type, customMessage }: EmptyStateProps) {
       description: 'Deleted notes will be placed here. You can restore them anytime.',
       colorClass: 'text-rose-400 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900',
     },
-    reminders: {
-      icon: Bell,
-      title: 'No upcoming reminders',
-      description: 'Add reminders to stay on top of critical deadlines.',
-      colorClass: 'text-[#A7EBF2] bg-[#26658C]/30 dark:bg-[#023859] border border-[#26658C]',
+    checklists: {
+      icon: CheckSquare,
+      title: 'No checklists yet',
+      description: 'Create to-do lists and shopping checklists to track your items with easy checkboxes.',
+      colorClass: 'text-[#54ACBF] bg-[#A7EBF2]/20 dark:bg-[#023859] border border-[#26658C]',
     },
     important: {
       icon: Star,

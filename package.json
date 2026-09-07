@@ -11,6 +11,7 @@
   "dependencies": {
     "@hookform/resolvers": "^5.9.1",
     "better-auth": "^1.7.3",
+    "cloudinary": "^2.11.0",
     "lucide-react": "^1.42.0",
     "mongodb": "^7.6.0",
     "mongoose": "^9.9.5",

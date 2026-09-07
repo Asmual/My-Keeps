@@ -15,8 +15,7 @@ export interface INoteDocument extends Document {
     text: string;
     completed: boolean;
   }[];
-  reminder?: Date | null;
-  noteType: 'text' | 'image' | 'voice';
+  noteType: 'text' | 'checklist' | 'image' | 'voice';
   images: string[];
   audioUrl?: string | null;
   userId?: string | null;
@@ -60,8 +59,7 @@ const NoteSchema = new Schema<INoteDocument>(
     isTrashed: { type: Boolean, default: false, index: true },
     labels: [{ type: String, trim: true }],
     checklist: [CheckItemSchema],
-    reminder: { type: Date, default: null },
-    noteType: { type: String, default: 'text', enum: ['text', 'image', 'voice'], index: true },
+    noteType: { type: String, default: 'text', enum: ['text', 'checklist', 'image', 'voice'], index: true },
     images: [{ type: String }],
     audioUrl: { type: String, default: null },
     userId: { type: String, default: null, index: true },

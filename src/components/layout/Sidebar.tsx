@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   StickyNote,
-  Bell,
+  CheckSquare,
   Archive,
   Trash2,
   Tag,
@@ -39,6 +39,13 @@ export function Sidebar() {
       active: pathname === '/' && !selectedLabel,
     },
     {
+      label: 'Checklist Note',
+      href: '/checklists',
+      icon: CheckSquare,
+      count: counts.checklists,
+      active: pathname === '/checklists',
+    },
+    {
       label: 'Image Note',
       href: '/image-notes',
       icon: ImageIcon,
@@ -51,13 +58,6 @@ export function Sidebar() {
       icon: Mic,
       count: counts.voiceNotes,
       active: pathname === '/voice-notes',
-    },
-    {
-      label: 'Notes Reminders',
-      href: '/reminders',
-      icon: Bell,
-      count: counts.reminders,
-      active: pathname === '/reminders',
     },
     {
       label: 'Important',

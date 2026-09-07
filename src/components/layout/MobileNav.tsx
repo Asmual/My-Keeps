@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { StickyNote, Bell, Archive, Trash2, Star } from 'lucide-react';
+import { StickyNote, CheckSquare, Archive, Trash2, Star } from 'lucide-react';
 import { useNotes } from '@/hooks/useNotes';
 import { cn } from '@/lib/utils';
 
@@ -13,8 +13,8 @@ export function MobileNav() {
 
   const links = [
     { label: 'Notes', href: '/', icon: StickyNote },
+    { label: 'Checklists', href: '/checklists', icon: CheckSquare },
     { label: 'Important', href: '/important', icon: Star },
-    { label: 'Reminders', href: '/reminders', icon: Bell },
     { label: 'Archive', href: '/archive', icon: Archive },
     { label: 'Trash', href: '/trash', icon: Trash2 },
   ];

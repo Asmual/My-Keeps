@@ -9,22 +9,22 @@ import {
   X,
   Plus,
   Tag,
-  Bell,
   Star,
   Image as ImageIcon,
   Mic,
+  Loader2,
 } from 'lucide-react';
 import Image from 'next/image';
 import { useNotes } from '@/hooks/useNotes';
 import { NOTE_COLORS } from '@/lib/constants';
 import { ColorPicker } from './ColorPicker';
-import { ReminderPicker } from './ReminderPicker';
 import { VoiceRecorder } from './VoiceRecorder';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
-import { cn, generateId, formatReminderDate } from '@/lib/utils';
+import { cn, generateId } from '@/lib/utils';
 import { CheckItem, Note, NoteColorId } from '@/types/note';
+import { uploadMedia } from '@/lib/upload';
 import toast from 'react-hot-toast';
 
 interface NoteEditModalContentProps {
@@ -43,20 +43,21 @@ function NoteEditModalContent({ note, onClose }: NoteEditModalContentProps) {
   const [images, setImages] = useState<string[]>(note.images || []);
   const [audioUrl, setAudioUrl] = useState<string | null>(note.audioUrl || null);
   const [showVoiceRecorder, setShowVoiceRecorder] = useState(false);
-  const [reminder, setReminder] = useState<string | null>(note.reminder || null);
   const [labels, setLabels] = useState<string[]>(note.labels || []);
   const [checklist, setChecklist] = useState<CheckItem[]>(note.checklist || []);
   const [newCheckItem, setNewCheckItem] = useState('');
   const [newLabelInput, setNewLabelInput] = useState('');
   const [showLabelInput, setShowLabelInput] = useState(false);
   const [isConfirmTrashOpen, setIsConfirmTrashOpen] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
 
   const imageInputRef = useRef<HTMLInputElement>(null);
 
   const handleSaveAndClose = useCallback(() => {
-    let noteType: 'text' | 'image' | 'voice' = 'text';
+    let noteType: 'text' | 'checklist' | 'image' | 'voice' = 'text';
     if (audioUrl) noteType = 'voice';
     else if (images.length > 0) noteType = 'image';
+    else if (checklist.length > 0) noteType = 'checklist';
 
     updateNote(note.id, {
       title: title.trim(),
@@ -65,7 +66,6 @@ function NoteEditModalContent({ note, onClose }: NoteEditModalContentProps) {
       isPinned,
       isImportant,
       labels,
-      reminder,
       checklist: checklist.length > 0 ? checklist : undefined,
       noteType,
       images,
@@ -80,7 +80,6 @@ function NoteEditModalContent({ note, onClose }: NoteEditModalContentProps) {
     isPinned,
     isImportant,
     labels,
-    reminder,
     checklist,
     images,
     audioUrl,
@@ -88,23 +87,28 @@ function NoteEditModalContent({ note, onClose }: NoteEditModalContentProps) {
     onClose,
   ]);
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
-    Array.from(files).forEach((file) => {
-      if (file.size > 4 * 1024 * 1024) {
-        toast.error(`${file.name} is too large (max 4MB)`);
-        return;
-      }
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        if (typeof reader.result === 'string') {
-          setImages((prev) => [...prev, reader.result as string]);
+    setIsUploading(true);
+    const toastId = toast.loading('Uploading image(s)...');
+    try {
+      for (const file of Array.from(files)) {
+        if (file.size > 10 * 1024 * 1024) {
+          toast.error(`${file.name} is too large (max 10MB)`);
+          continue;
         }
-      };
-      reader.readAsDataURL(file);
-    });
+        const uploadedUrl = await uploadMedia(file, 'image');
+        setImages((prev) => [...prev, uploadedUrl]);
+      }
+      toast.success('Image(s) uploaded successfully', { id: toastId });
+    } catch {
+      toast.error('Failed to upload image', { id: toastId });
+    } finally {
+      setIsUploading(false);
+      if (imageInputRef.current) imageInputRef.current.value = '';
+    }
   };
 
   // Handle ESC key
@@ -201,7 +205,7 @@ function NoteEditModalContent({ note, onClose }: NoteEditModalContentProps) {
             </div>
           </div>
 
-          {/* Scrollable Middle Content (Images, Voice, Text, Checklist, Reminder, Labels) */}
+          {/* Scrollable Middle Content (Images, Voice, Text, Checklist, Labels) */}
           <div className="flex-1 overflow-y-auto pr-1 sm:pr-2 space-y-3 min-h-0">
             {/* Attached images gallery */}
             {images.length > 0 && (
@@ -237,9 +241,24 @@ function NoteEditModalContent({ note, onClose }: NoteEditModalContentProps) {
             {showVoiceRecorder ? (
               <VoiceRecorder
                 initialAudioUrl={audioUrl}
-                onSaveAudio={(url) => {
-                  setAudioUrl(url);
-                  setShowVoiceRecorder(false);
+                onSaveAudio={async (recordedData) => {
+                  if (!recordedData) {
+                    setAudioUrl(null);
+                    setShowVoiceRecorder(false);
+                    return;
+                  }
+                  setIsUploading(true);
+                  const toastId = toast.loading('Uploading voice memo...');
+                  try {
+                    const uploadedUrl = await uploadMedia(recordedData, 'voice');
+                    setAudioUrl(uploadedUrl);
+                    toast.success('Voice memo saved', { id: toastId });
+                  } catch {
+                    setAudioUrl(recordedData);
+                  } finally {
+                    setIsUploading(false);
+                    setShowVoiceRecorder(false);
+                  }
                 }}
                 onClose={() => setShowVoiceRecorder(false)}
               />
@@ -284,14 +303,30 @@ function NoteEditModalContent({ note, onClose }: NoteEditModalContentProps) {
                       }
                       className="rounded accent-[#023859] dark:accent-[#54ACBF] cursor-pointer"
                     />
-                    <span
+                    <input
+                      type="text"
+                      value={item.text}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setChecklist((prev) =>
+                          prev.map((c, i) => (i === idx ? { ...c, text: val } : c))
+                        );
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          const nextInput = document.getElementById('modal-new-check-item');
+                          if (nextInput) nextInput.focus();
+                        } else if (e.key === 'Backspace' && item.text === '') {
+                          e.preventDefault();
+                          setChecklist((prev) => prev.filter((_, i) => i !== idx));
+                        }
+                      }}
                       className={cn(
-                        'flex-1 min-w-0 text-[#011C40] dark:text-white break-words',
+                        'flex-1 min-w-0 bg-transparent border-b border-transparent hover:border-slate-300 dark:hover:border-slate-600 focus:border-[#54ACBF] focus:outline-none transition-colors text-[#011C40] dark:text-white',
                         item.completed && 'line-through text-slate-400 dark:text-[#A7EBF2]/50'
                       )}
-                    >
-                      {item.text}
-                    </span>
+                    />
                     <button
                       type="button"
                       onClick={() => setChecklist((prev) => prev.filter((_, i) => i !== idx))}
@@ -304,32 +339,15 @@ function NoteEditModalContent({ note, onClose }: NoteEditModalContentProps) {
                 <div className="flex items-center gap-2 pt-1">
                   <Plus className="w-4 h-4 text-[#54ACBF] shrink-0" />
                   <input
+                    id="modal-new-check-item"
                     type="text"
                     value={newCheckItem}
                     onChange={(e) => setNewCheckItem(e.target.value)}
                     onKeyDown={handleAddCheckItem}
-                    placeholder="Add checklist item..."
+                    placeholder="Add checklist item (press Enter)..."
                     className="w-full min-w-0 bg-transparent text-sm text-[#011C40] dark:text-white placeholder-slate-400 dark:placeholder-[#A7EBF2]/50 focus:outline-none"
                   />
                 </div>
-              </div>
-            )}
-
-            {/* Reminder preview */}
-            {reminder && (
-              <div className="flex flex-wrap gap-1.5">
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-[#54ACBF]/15 dark:bg-[#54ACBF]/25 text-[#011C40] dark:text-[#A7EBF2] border border-[#54ACBF]/40 shadow-xs">
-                  <Bell className="w-3.5 h-3.5 text-[#54ACBF] shrink-0" />
-                  <span>{formatReminderDate(reminder)}</span>
-                  <button
-                    type="button"
-                    onClick={() => setReminder(null)}
-                    className="ml-1 p-0.5 rounded-full hover:bg-black/10 dark:hover:bg-white/10 text-slate-500 hover:text-rose-500 cursor-pointer transition-colors"
-                    title="Remove reminder"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                </span>
               </div>
             )}
 
@@ -380,11 +398,6 @@ function NoteEditModalContent({ note, onClose }: NoteEditModalContentProps) {
           {/* Footer toolbar (Fixed at bottom) */}
           <div className="flex items-center justify-between pt-3 mt-2 border-t border-black/5 dark:border-white/10 shrink-0">
             <div className="flex items-center gap-1.5">
-              <ReminderPicker
-                currentReminder={reminder}
-                onSelectReminder={setReminder}
-              />
-
               <ColorPicker currentColor={color} onSelectColor={setColor} />
 
               <button
@@ -470,9 +483,11 @@ function NoteEditModalContent({ note, onClose }: NoteEditModalContentProps) {
               variant="primary"
               size="sm"
               onClick={handleSaveAndClose}
-              className="px-6 font-semibold"
+              disabled={isUploading}
+              className="px-6 font-semibold flex items-center gap-1.5"
             >
-              Done
+              {isUploading && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+              {isUploading ? 'Saving...' : 'Done'}
             </Button>
           </div>
         </div>

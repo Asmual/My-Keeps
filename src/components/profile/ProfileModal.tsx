@@ -14,6 +14,7 @@ import {
 import { useSession } from '@/lib/auth-client';
 import { Button } from '@/components/ui/Button';
 import { cn } from '@/lib/utils';
+import { uploadMedia } from '@/lib/upload';
 import toast from 'react-hot-toast';
 
 interface ProfileModalProps {
@@ -92,23 +93,26 @@ export function ProfileModal({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose]);
 
-  const handleImageFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Check size limit (max 3MB)
-    if (file.size > 3 * 1024 * 1024) {
-      toast.error('Image size must be under 3MB');
+    // Check size limit (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Image size must be under 5MB');
       return;
     }
 
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      if (typeof reader.result === 'string') {
-        setImage(reader.result);
-      }
-    };
-    reader.readAsDataURL(file);
+    const toastId = toast.loading('Uploading avatar...');
+    try {
+      const uploadedUrl = await uploadMedia(file, 'avatar');
+      setImage(uploadedUrl);
+      toast.success('Avatar uploaded successfully', { id: toastId });
+    } catch {
+      toast.error('Failed to upload avatar', { id: toastId });
+    } finally {
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
   };
 
   const handleSave = async (e: React.FormEvent) => {

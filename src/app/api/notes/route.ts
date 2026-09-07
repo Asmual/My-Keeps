@@ -21,10 +21,10 @@ export async function GET(request: NextRequest) {
       query.isTrashed = false;
     } else if (filter === 'trash') {
       query.isTrashed = true;
-    } else if (filter === 'reminders') {
+    } else if (filter === 'checklist') {
       query.isArchived = false;
       query.isTrashed = false;
-      query.reminder = { $ne: null };
+      query.$or = [{ noteType: 'checklist' }, { 'checklist.0': { $exists: true } }];
     } else if (filter === 'important') {
       query.isArchived = false;
       query.isTrashed = false;
@@ -79,7 +79,6 @@ export async function POST(request: NextRequest) {
       isTrashed: false,
       labels: body.labels || [],
       checklist: body.checklist || [],
-      reminder: body.reminder || null,
       noteType: body.noteType || 'text',
       images: body.images || [],
       audioUrl: body.audioUrl || null,

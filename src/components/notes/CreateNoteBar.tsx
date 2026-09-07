@@ -7,42 +7,46 @@ import {
   Plus,
   X,
   Tag,
-  Bell,
   Image as ImageIcon,
   Mic,
   Star,
   Trash2,
+  Loader2,
 } from 'lucide-react';
 import { useNotes } from '@/hooks/useNotes';
 import { ColorPicker } from './ColorPicker';
-import { ReminderPicker } from './ReminderPicker';
 import { VoiceRecorder } from './VoiceRecorder';
 import { NOTE_COLORS } from '@/lib/constants';
 import { NoteColorId, CheckItem } from '@/types/note';
-import { cn, generateId, formatReminderDate } from '@/lib/utils';
+import { cn, generateId } from '@/lib/utils';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
+import { uploadMedia } from '@/lib/upload';
 import Image from 'next/image';
 import toast from 'react-hot-toast';
 
-export function CreateNoteBar() {
+interface CreateNoteBarProps {
+  defaultNoteType?: 'text' | 'checklist' | 'image' | 'voice';
+}
+
+export function CreateNoteBar({ defaultNoteType = 'text' }: CreateNoteBarProps) {
   const { createNote, requireAuth } = useNotes();
   const [isExpanded, setIsExpanded] = useState(false);
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [isPinned, setIsPinned] = useState(false);
   const [color, setColor] = useState<NoteColorId>('default');
-  const [reminder, setReminder] = useState<string | null>(null);
   const [labels, setLabels] = useState<string[]>([]);
   const [newLabelInput, setNewLabelInput] = useState('');
   const [showLabelInput, setShowLabelInput] = useState(false);
-  const [isChecklistMode, setIsChecklistMode] = useState(false);
+  const [isChecklistMode, setIsChecklistMode] = useState(defaultNoteType === 'checklist');
   const [checklist, setChecklist] = useState<CheckItem[]>([]);
   const [newCheckItem, setNewCheckItem] = useState('');
   const [isImportant, setIsImportant] = useState(false);
   const [images, setImages] = useState<string[]>([]);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [showVoiceRecorder, setShowVoiceRecorder] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -61,14 +65,14 @@ export function CreateNoteBar() {
       title.trim() ||
       content.trim() ||
       checklist.length > 0 ||
-      reminder ||
       images.length > 0 ||
       audioUrl;
 
     if (hasContent) {
-      let noteType: 'text' | 'image' | 'voice' = 'text';
+      let noteType: 'text' | 'checklist' | 'image' | 'voice' = defaultNoteType;
       if (audioUrl) noteType = 'voice';
       else if (images.length > 0) noteType = 'image';
+      else if (checklist.length > 0 || isChecklistMode) noteType = 'checklist';
 
       createNote({
         title: title.trim(),
@@ -77,8 +81,7 @@ export function CreateNoteBar() {
         isPinned,
         isImportant,
         labels,
-        reminder: reminder || undefined,
-        checklist: isChecklistMode && checklist.length > 0 ? checklist : undefined,
+        checklist: (isChecklistMode || checklist.length > 0) ? checklist : undefined,
         noteType,
         images: images.length > 0 ? images : undefined,
         audioUrl: audioUrl || undefined,
@@ -90,10 +93,9 @@ export function CreateNoteBar() {
     setIsPinned(false);
     setIsImportant(false);
     setColor('default');
-    setReminder(null);
     setLabels([]);
     setChecklist([]);
-    setIsChecklistMode(false);
+    setIsChecklistMode(defaultNoteType === 'checklist');
     setShowLabelInput(false);
     setImages([]);
     setAudioUrl(null);
@@ -103,7 +105,6 @@ export function CreateNoteBar() {
     title,
     content,
     checklist,
-    reminder,
     images,
     audioUrl,
     createNote,
@@ -112,27 +113,34 @@ export function CreateNoteBar() {
     isImportant,
     labels,
     isChecklistMode,
+    defaultNoteType,
   ]);
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
-    Array.from(files).forEach((file) => {
-      if (file.size > 4 * 1024 * 1024) {
-        toast.error(`${file.name} is too large (max 4MB)`);
-        return;
-      }
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        if (typeof reader.result === 'string') {
-          setImages((prev) => [...prev, reader.result as string]);
-        }
-      };
-      reader.readAsDataURL(file);
-    });
-
     setIsExpanded(true);
+    setIsUploading(true);
+    const toastId = toast.loading('Uploading image(s)...');
+
+    try {
+      for (const file of Array.from(files)) {
+        if (file.size > 10 * 1024 * 1024) {
+          toast.error(`${file.name} is too large (max 10MB)`);
+          continue;
+        }
+        const uploadedUrl = await uploadMedia(file, 'image');
+        setImages((prev) => [...prev, uploadedUrl]);
+      }
+      toast.success('Image(s) uploaded successfully', { id: toastId });
+    } catch (err) {
+      console.error('Image upload failed:', err);
+      toast.error('Failed to upload image', { id: toastId });
+    } finally {
+      setIsUploading(false);
+      if (imageInputRef.current) imageInputRef.current.value = '';
+    }
   };
 
   // Click outside to submit / close
@@ -315,9 +323,24 @@ export function CreateNoteBar() {
             {showVoiceRecorder ? (
               <VoiceRecorder
                 initialAudioUrl={audioUrl}
-                onSaveAudio={(url) => {
-                  setAudioUrl(url);
-                  setShowVoiceRecorder(false);
+                onSaveAudio={async (recordedData) => {
+                  if (!recordedData) {
+                    setAudioUrl(null);
+                    setShowVoiceRecorder(false);
+                    return;
+                  }
+                  setIsUploading(true);
+                  const toastId = toast.loading('Uploading voice memo...');
+                  try {
+                    const uploadedUrl = await uploadMedia(recordedData, 'voice');
+                    setAudioUrl(uploadedUrl);
+                    toast.success('Voice memo saved', { id: toastId });
+                  } catch {
+                    setAudioUrl(recordedData);
+                  } finally {
+                    setIsUploading(false);
+                    setShowVoiceRecorder(false);
+                  }
                 }}
                 onClose={() => setShowVoiceRecorder(false)}
               />
@@ -363,14 +386,31 @@ export function CreateNoteBar() {
                       }}
                       className="rounded accent-[#023859] dark:accent-[#54ACBF] cursor-pointer"
                     />
-                    <span
+                    <input
+                      type="text"
+                      value={item.text}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setChecklist((prev) =>
+                          prev.map((c, i) => (i === idx ? { ...c, text: val } : c))
+                        );
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          // Focus new check item or add
+                          const nextInput = document.getElementById('new-check-item-input');
+                          if (nextInput) nextInput.focus();
+                        } else if (e.key === 'Backspace' && item.text === '') {
+                          e.preventDefault();
+                          setChecklist((prev) => prev.filter((_, i) => i !== idx));
+                        }
+                      }}
                       className={cn(
-                        'flex-1 text-sm text-[#011C40] dark:text-white',
+                        'flex-1 text-sm bg-transparent border-b border-transparent hover:border-slate-300 dark:hover:border-slate-600 focus:border-[#54ACBF] focus:outline-none transition-colors text-[#011C40] dark:text-white',
                         item.completed && 'line-through text-slate-400 dark:text-[#A7EBF2]/50'
                       )}
-                    >
-                      {item.text}
-                    </span>
+                    />
                     <button
                       type="button"
                       onClick={() =>
@@ -383,34 +423,17 @@ export function CreateNoteBar() {
                   </div>
                 ))}
                 <div className="flex items-center gap-2 pt-1">
-                  <Plus className="w-4 h-4 text-[#54ACBF]" />
+                  <Plus className="w-4 h-4 text-[#54ACBF] shrink-0" />
                   <input
+                    id="new-check-item-input"
                     type="text"
                     value={newCheckItem}
                     onChange={(e) => setNewCheckItem(e.target.value)}
                     onKeyDown={handleAddCheckItem}
-                    placeholder="Add list item and press Enter..."
+                    placeholder="List item (press Enter for next)..."
                     className="w-full bg-transparent text-sm text-[#011C40] dark:text-white placeholder-slate-400 dark:placeholder-[#A7EBF2]/50 focus:outline-none"
                   />
                 </div>
-              </div>
-            )}
-
-            {/* Reminder preview */}
-            {reminder && (
-              <div className="flex flex-wrap gap-1.5 pt-1">
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-[#54ACBF]/15 dark:bg-[#54ACBF]/25 text-[#011C40] dark:text-[#A7EBF2] border border-[#54ACBF]/40 shadow-xs">
-                  <Bell className="w-3 h-3 text-[#54ACBF] shrink-0" />
-                  <span className="truncate max-w-[200px]">{formatReminderDate(reminder)}</span>
-                  <button
-                    type="button"
-                    onClick={() => setReminder(null)}
-                    className="ml-0.5 p-0.5 rounded-full hover:bg-black/10 dark:hover:bg-white/10 text-slate-500 hover:text-rose-500 cursor-pointer transition-colors"
-                    title="Remove reminder"
-                  >
-                    <X className="w-3 h-3" />
-                  </button>
-                </span>
               </div>
             )}
 
@@ -460,11 +483,6 @@ export function CreateNoteBar() {
             {/* Action buttons & Close (Luna Primary Dark Blue) */}
             <div className="flex items-center justify-between pt-2.5 border-t border-black/5 dark:border-white/10">
               <div className="flex items-center gap-1">
-                <ReminderPicker
-                  currentReminder={reminder}
-                  onSelectReminder={setReminder}
-                />
-
                 <ColorPicker currentColor={color} onSelectColor={setColor} />
 
                 <button
@@ -529,9 +547,11 @@ export function CreateNoteBar() {
                 variant="primary"
                 size="sm"
                 onClick={handleSaveAndClose}
-                className="px-5 font-semibold text-xs"
+                disabled={isUploading}
+                className="px-5 font-semibold text-xs flex items-center gap-1.5"
               >
-                Close
+                {isUploading && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                {isUploading ? 'Uploading...' : 'Close'}
               </Button>
             </div>
           </div>

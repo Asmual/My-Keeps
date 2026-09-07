@@ -38,8 +38,7 @@ export interface Note {
   isTrashed: boolean;
   labels: string[];
   checklist?: CheckItem[];
-  reminder?: string | null;
-  noteType?: 'text' | 'image' | 'voice';
+  noteType?: 'text' | 'checklist' | 'image' | 'voice';
   images?: string[];
   audioUrl?: string | null;
   createdAt: string;
@@ -48,4 +47,4 @@ export interface Note {
 
 export type ViewMode = 'grid' | 'list';
 
-export type NavTab = 'notes' | 'reminders' | 'archive' | 'trash';
+export type NavTab = 'notes' | 'checklists' | 'archive' | 'trash';

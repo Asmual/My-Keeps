@@ -10,7 +10,7 @@ import { EmptyState } from './EmptyState';
 interface NoteGridProps {
   notes: Note[];
   isTrashView?: boolean;
-  emptyType?: 'notes' | 'archive' | 'trash' | 'reminders' | 'important' | 'imageNotes' | 'voiceNotes';
+  emptyType?: 'notes' | 'archive' | 'trash' | 'checklists' | 'important' | 'imageNotes' | 'voiceNotes';
 }
 
 export function NoteGrid({

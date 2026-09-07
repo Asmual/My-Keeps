@@ -9,7 +9,6 @@ import {
   RotateCcw,
   Tag,
   X,
-  Bell,
   Check,
   Star,
   Play,
@@ -20,10 +19,9 @@ import { Note } from '@/types/note';
 import { NOTE_COLORS } from '@/lib/constants';
 import { useNotes } from '@/hooks/useNotes';
 import { ColorPicker } from './ColorPicker';
-import { ReminderPicker } from './ReminderPicker';
 import { Badge } from '@/components/ui/Badge';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
-import { cn, formatDate, formatReminderDate } from '@/lib/utils';
+import { cn, formatDate } from '@/lib/utils';
 
 interface NoteCardProps {
   note: Note;
@@ -43,9 +41,8 @@ export function NoteCard({ note, isTrashView = false }: NoteCardProps) {
     removeLabel,
     addLabel,
     setActiveEditNote,
-    updateNote,
     requireAuth,
-    setReminder,
+    toggleCheckItem,
     selectedNoteIds,
     toggleSelectNote,
   } = useNotes();
@@ -69,11 +66,7 @@ export function NoteCard({ note, isTrashView = false }: NoteCardProps) {
   const handleToggleCheckItem = (e: React.MouseEvent, itemId: string) => {
     e.stopPropagation();
     if (!requireAuth('update checklist')) return;
-    if (!note.checklist) return;
-    const updated = note.checklist.map((item) =>
-      item.id === itemId ? { ...item, completed: !item.completed } : item
-    );
-    updateNote(note.id, { checklist: updated });
+    toggleCheckItem(note.id, itemId);
   };
 
   const handleAddTag = (e?: React.KeyboardEvent) => {
@@ -259,11 +252,12 @@ export function NoteCard({ note, isTrashView = false }: NoteCardProps) {
         {/* Checklist preview */}
         {note.checklist && note.checklist.length > 0 && (
           <div className="space-y-1.5 mb-3">
-            {note.checklist.slice(0, 5).map((item) => (
+            {note.checklist.slice(0, 8).map((item) => (
               <div
                 key={item.id}
                 onClick={(e) => handleToggleCheckItem(e, item.id)}
-                className="flex items-center gap-2 text-xs text-slate-700 dark:text-slate-200 hover:opacity-80"
+                className="flex items-center gap-2 text-xs text-slate-700 dark:text-slate-200 hover:opacity-80 py-0.5 px-1 rounded-md hover:bg-black/5 dark:hover:bg-white/5 cursor-pointer transition-colors"
+                title={item.completed ? 'Click to uncheck' : 'Click to complete'}
               >
                 <input
                   type="checkbox"
@@ -273,45 +267,19 @@ export function NoteCard({ note, isTrashView = false }: NoteCardProps) {
                 />
                 <span
                   className={cn(
-                    'truncate flex-1',
-                    item.completed && 'line-through text-slate-400 dark:text-[#A7EBF2]/50'
+                    'truncate flex-1 select-none',
+                    item.completed && 'line-through text-slate-400 dark:text-[#A7EBF2]/40'
                   )}
                 >
                   {item.text}
                 </span>
               </div>
             ))}
-            {note.checklist.length > 5 && (
-              <p className="text-xs text-[#54ACBF] italic pt-0.5">
-                +{note.checklist.length - 5} more items
+            {note.checklist.length > 8 && (
+              <p className="text-xs text-[#54ACBF] italic pt-0.5 px-1">
+                +{note.checklist.length - 8} more items
               </p>
             )}
-          </div>
-        )}
-
-        {/* Reminder Badge */}
-        {note.reminder && (
-          <div className="flex flex-wrap gap-1.5 mb-2.5">
-            <span
-              onClick={(e) => e.stopPropagation()}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-[#54ACBF]/15 dark:bg-[#54ACBF]/25 text-[#011C40] dark:text-[#A7EBF2] border border-[#54ACBF]/40 shadow-xs"
-            >
-              <Bell className="w-3 h-3 text-[#54ACBF] shrink-0" />
-              <span className="truncate max-w-[170px]">{formatReminderDate(note.reminder)}</span>
-              {!isTrashView && (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setReminder(note.id, null);
-                  }}
-                  className="ml-0.5 p-0.5 rounded-full hover:bg-black/10 dark:hover:bg-white/10 text-slate-500 dark:text-slate-300 hover:text-rose-500 dark:hover:text-rose-400 cursor-pointer transition-colors"
-                  title="Remove reminder"
-                >
-                  <X className="w-3 h-3" />
-                </button>
-              )}
-            </span>
           </div>
         )}
 
@@ -382,11 +350,6 @@ export function NoteCard({ note, isTrashView = false }: NoteCardProps) {
             onClick={(e) => e.stopPropagation()}
             className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150"
           >
-            <ReminderPicker
-              currentReminder={note.reminder}
-              onSelectReminder={(date) => setReminder(note.id, date)}
-            />
-
             <ColorPicker
               currentColor={note.color}
               onSelectColor={(col) => changeColor(note.id, col)}
