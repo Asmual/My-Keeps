@@ -13,6 +13,8 @@ import {
   Image as ImageIcon,
   Mic,
   Loader2,
+  Play,
+  Pause,
 } from 'lucide-react';
 import Image from 'next/image';
 import { useNotes } from '@/hooks/useNotes';
@@ -33,7 +35,7 @@ interface NoteEditModalContentProps {
 }
 
 function NoteEditModalContent({ note, onClose }: NoteEditModalContentProps) {
-  const { updateNote, archiveNote, unarchiveNote, trashNote } = useNotes();
+  const { updateNote, archiveNote, unarchiveNote, deletePermanently } = useNotes();
 
   const [title, setTitle] = useState(note.title || '');
   const [content, setContent] = useState(note.content || '');
@@ -43,6 +45,8 @@ function NoteEditModalContent({ note, onClose }: NoteEditModalContentProps) {
   const [images, setImages] = useState<string[]>(note.images || []);
   const [audioUrl, setAudioUrl] = useState<string | null>(note.audioUrl || null);
   const [showVoiceRecorder, setShowVoiceRecorder] = useState(false);
+  const [isPlayingAudio, setIsPlayingAudio] = useState(false);
+  const [isConfirmDeleteAudioOpen, setIsConfirmDeleteAudioOpen] = useState(false);
   const [labels, setLabels] = useState<string[]>(note.labels || []);
   const [checklist, setChecklist] = useState<CheckItem[]>(note.checklist || []);
   const [newCheckItem, setNewCheckItem] = useState('');
@@ -52,8 +56,48 @@ function NoteEditModalContent({ note, onClose }: NoteEditModalContentProps) {
   const [isUploading, setIsUploading] = useState(false);
 
   const imageInputRef = useRef<HTMLInputElement>(null);
+  const audioPreviewRef = useRef<HTMLAudioElement | null>(null);
+
+  // Clean up audio on unmount
+  useEffect(() => {
+    return () => {
+      if (audioPreviewRef.current) {
+        audioPreviewRef.current.pause();
+        audioPreviewRef.current = null;
+      }
+    };
+  }, []);
+
+  const togglePlayAudio = () => {
+    if (!audioUrl) return;
+    if (!audioPreviewRef.current || audioPreviewRef.current.src !== audioUrl) {
+      const audio = new Audio(audioUrl);
+      audio.onended = () => setIsPlayingAudio(false);
+      audio.onerror = () => {
+        toast.error('Could not play audio memo');
+        setIsPlayingAudio(false);
+      };
+      audioPreviewRef.current = audio;
+    }
+    if (isPlayingAudio) {
+      audioPreviewRef.current.pause();
+      setIsPlayingAudio(false);
+    } else {
+      audioPreviewRef.current.play().catch(() => {
+        toast.error('Failed to play audio');
+        setIsPlayingAudio(false);
+      });
+      setIsPlayingAudio(true);
+    }
+  };
 
   const handleSaveAndClose = useCallback(() => {
+    if (audioPreviewRef.current) {
+      audioPreviewRef.current.pause();
+      audioPreviewRef.current = null;
+    }
+    setIsPlayingAudio(false);
+
     let noteType: 'text' | 'checklist' | 'image' | 'voice' = 'text';
     if (audioUrl) noteType = 'voice';
     else if (images.length > 0) noteType = 'image';
@@ -264,12 +308,27 @@ function NoteEditModalContent({ note, onClose }: NoteEditModalContentProps) {
               />
             ) : audioUrl ? (
               <div className="flex items-center justify-between p-2.5 rounded-xl bg-[#54ACBF]/15 dark:bg-[#011C40] border border-[#54ACBF]/30 text-xs">
-                <span className="flex items-center gap-2 font-medium text-[#011C40] dark:text-[#A7EBF2]">
-                  <Mic className="w-3.5 h-3.5 text-[#54ACBF]" /> Voice memo attached
-                </span>
+                <div className="flex items-center gap-2 font-medium text-[#011C40] dark:text-[#A7EBF2]">
+                  <button
+                    type="button"
+                    onClick={togglePlayAudio}
+                    className="p-1.5 rounded-full bg-[#54ACBF] text-white hover:bg-[#26658C] transition-colors cursor-pointer"
+                    title={isPlayingAudio ? 'Pause' : 'Play voice memo'}
+                  >
+                    {isPlayingAudio ? (
+                      <Pause className="w-3 h-3 fill-current" />
+                    ) : (
+                      <Play className="w-3 h-3 fill-current ml-0.5" />
+                    )}
+                  </button>
+                  <span className="flex items-center gap-1.5">
+                    <Mic className="w-3.5 h-3.5 text-[#54ACBF]" />
+                    {isPlayingAudio ? 'Playing voice note...' : 'Voice memo attached'}
+                  </span>
+                </div>
                 <button
                   type="button"
-                  onClick={() => setAudioUrl(null)}
+                  onClick={() => setIsConfirmDeleteAudioOpen(true)}
                   className="p-1 text-rose-500 hover:bg-rose-100 dark:hover:bg-rose-950/60 rounded-md transition-colors cursor-pointer"
                   title="Remove voice note"
                 >
@@ -472,7 +531,7 @@ function NoteEditModalContent({ note, onClose }: NoteEditModalContentProps) {
               <button
                 type="button"
                 onClick={() => setIsConfirmTrashOpen(true)}
-                title="Move to trash"
+                title="Delete note permanently"
                 className="p-1.5 rounded-full text-slate-600 dark:text-[#A7EBF2]/80 hover:bg-rose-100 dark:hover:bg-rose-950/60 hover:text-rose-600 transition-colors cursor-pointer"
               >
                 <Trash2 className="w-4 h-4" />
@@ -493,16 +552,39 @@ function NoteEditModalContent({ note, onClose }: NoteEditModalContentProps) {
         </div>
       </div>
 
+      {/* Permanently delete note from MongoDB */}
       <ConfirmModal
         isOpen={isConfirmTrashOpen}
         onClose={() => setIsConfirmTrashOpen(false)}
         onConfirm={() => {
-          trashNote(note.id);
+          if (audioPreviewRef.current) {
+            audioPreviewRef.current.pause();
+            audioPreviewRef.current = null;
+          }
+          deletePermanently(note.id);
           onClose();
         }}
-        title="Move note to trash?"
-        description="This note will be moved to Trash. You can restore it anytime from the Trash view."
-        confirmText="Move to Trash"
+        title="Delete note permanently?"
+        description="This note will be permanently deleted from MongoDB. This action cannot be undone."
+        confirmText="Delete Note"
+        variant="danger"
+      />
+
+      {/* Delete voice memo confirmation */}
+      <ConfirmModal
+        isOpen={isConfirmDeleteAudioOpen}
+        onClose={() => setIsConfirmDeleteAudioOpen(false)}
+        onConfirm={() => {
+          if (audioPreviewRef.current) {
+            audioPreviewRef.current.pause();
+            audioPreviewRef.current = null;
+          }
+          setIsPlayingAudio(false);
+          setAudioUrl(null);
+        }}
+        title="Delete voice memo?"
+        description="Are you sure you want to delete this voice memo from the note?"
+        confirmText="Delete Voice Memo"
         variant="danger"
       />
     </>

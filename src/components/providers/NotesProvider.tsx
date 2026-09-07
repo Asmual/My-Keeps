@@ -25,6 +25,7 @@ interface NotesContextType {
   allLabels: string[];
   counts: {
     active: number;
+    textNotes: number;
     archive: number;
     trash: number;
     checklists: number;
@@ -203,6 +204,15 @@ export function NotesProvider({ children }: { children: React.ReactNode }) {
   const counts = useMemo(() => {
     return {
       active: notes.filter((n) => !n.isArchived && !n.isTrashed).length,
+      textNotes: notes.filter(
+        (n) =>
+          !n.isArchived &&
+          !n.isTrashed &&
+          (!n.noteType || n.noteType === 'text') &&
+          (!n.images || n.images.length === 0) &&
+          !n.audioUrl &&
+          (!n.checklist || n.checklist.length === 0)
+      ).length,
       archive: notes.filter((n) => n.isArchived && !n.isTrashed).length,
       trash: notes.filter((n) => n.isTrashed).length,
       checklists: notes.filter(

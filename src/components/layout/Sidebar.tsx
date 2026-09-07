@@ -35,7 +35,7 @@ export function Sidebar() {
       label: 'Text Note',
       href: '/',
       icon: StickyNote,
-      count: counts.active,
+      count: counts.textNotes,
       active: pathname === '/' && !selectedLabel,
     },
     {

@@ -22,6 +22,7 @@ import { ColorPicker } from './ColorPicker';
 import { Badge } from '@/components/ui/Badge';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
 import { cn, formatDate } from '@/lib/utils';
+import toast from 'react-hot-toast';
 
 interface NoteCardProps {
   note: Note;
@@ -34,7 +35,6 @@ export function NoteCard({ note, isTrashView = false }: NoteCardProps) {
     toggleImportant,
     archiveNote,
     unarchiveNote,
-    trashNote,
     restoreNote,
     deletePermanently,
     changeColor,
@@ -214,16 +214,23 @@ export function NoteCard({ note, isTrashView = false }: NoteCardProps) {
               type="button"
               onClick={() => {
                 if (!note.audioUrl) return;
-                if (!audioRef.current) {
+                if (!audioRef.current || audioRef.current.src !== note.audioUrl) {
                   const audio = new Audio(note.audioUrl);
                   audio.onended = () => setIsPlayingAudio(false);
+                  audio.onerror = () => {
+                    toast.error('Could not play audio memo');
+                    setIsPlayingAudio(false);
+                  };
                   audioRef.current = audio;
                 }
                 if (isPlayingAudio) {
                   audioRef.current.pause();
                   setIsPlayingAudio(false);
                 } else {
-                  audioRef.current.play();
+                  audioRef.current.play().catch(() => {
+                    toast.error('Failed to play audio memo');
+                    setIsPlayingAudio(false);
+                  });
                   setIsPlayingAudio(true);
                 }
               }}
@@ -389,8 +396,8 @@ export function NoteCard({ note, isTrashView = false }: NoteCardProps) {
 
             <button
               type="button"
-              onClick={() => trashNote(note.id)}
-              title="Move to trash"
+              onClick={() => setIsConfirmDeleteOpen(true)}
+              title="Delete note permanently"
               className="p-1.5 rounded-full text-slate-600 dark:text-[#A7EBF2]/80 hover:bg-rose-100 dark:hover:bg-rose-950/60 hover:text-rose-600 transition-colors cursor-pointer"
             >
               <Trash2 className="w-3.5 h-3.5" />
@@ -427,8 +434,8 @@ export function NoteCard({ note, isTrashView = false }: NoteCardProps) {
         onClose={() => setIsConfirmDeleteOpen(false)}
         onConfirm={() => deletePermanently(note.id)}
         title="Delete note permanently?"
-        description="This action cannot be undone. Are you sure you want to permanently delete this note?"
-        confirmText="Delete"
+        description="This will permanently delete this note from MongoDB. This action cannot be undone."
+        confirmText="Delete Note"
         variant="danger"
       />
     </div>

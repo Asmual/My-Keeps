@@ -18,7 +18,7 @@ export default function ImageNotesPage() {
 
   return (
     <div className="max-w-7xl mx-auto">
-      <CreateNoteBar />
+      <CreateNoteBar defaultNoteType="image" />
 
       <div className="flex items-center gap-2 mb-6 pb-4 border-b border-neutral-200/60 dark:border-neutral-800/60">
         <ImageIcon className="w-5 h-5 text-[#54ACBF]" />

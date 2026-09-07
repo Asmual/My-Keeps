@@ -12,6 +12,7 @@ import {
   Upload,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
+import { ConfirmModal } from '@/components/ui/ConfirmModal';
 import toast from 'react-hot-toast';
 
 interface VoiceRecorderProps {
@@ -29,6 +30,7 @@ export function VoiceRecorder({
   const [recordingTime, setRecordingTime] = useState(0);
   const [audioUrl, setAudioUrl] = useState<string | null>(initialAudioUrl || null);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = useState(false);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -221,7 +223,7 @@ export function VoiceRecorder({
           <div className="flex items-center gap-1.5">
             <button
               type="button"
-              onClick={handleRemove}
+              onClick={() => setIsConfirmDeleteOpen(true)}
               className="p-1.5 text-rose-500 hover:bg-rose-100 dark:hover:bg-rose-950/60 rounded-lg transition-colors cursor-pointer"
               title="Remove voice memo"
             >
@@ -270,6 +272,16 @@ export function VoiceRecorder({
           />
         </div>
       )}
+
+      <ConfirmModal
+        isOpen={isConfirmDeleteOpen}
+        onClose={() => setIsConfirmDeleteOpen(false)}
+        onConfirm={handleRemove}
+        title="Delete voice memo?"
+        description="Are you sure you want to delete this recorded voice memo?"
+        confirmText="Delete Voice Memo"
+        variant="danger"
+      />
     </div>
   );
 }

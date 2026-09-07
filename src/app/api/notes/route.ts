@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import mongoose from 'mongoose';
 import { connectToDatabase } from '@/lib/db/mongoose';
 import { NoteModel } from '@/models/Note';
 
@@ -120,7 +121,39 @@ export async function DELETE(request: NextRequest) {
       });
     }
 
-    return NextResponse.json({ success: false, error: 'Invalid action parameter' }, { status: 400 });
+    // Support batch deletion by IDs
+    let ids: string[] = [];
+    try {
+      const body = await request.json();
+      if (Array.isArray(body.ids)) {
+        ids = body.ids;
+      }
+    } catch {
+      // not a json body
+    }
+
+    if (ids.length > 0) {
+      const objectIds = ids
+        .filter((id) => mongoose.isValidObjectId(id))
+        .map((id) => new mongoose.Types.ObjectId(id));
+
+      const query: Record<string, unknown> = {
+        $or: [
+          { _id: { $in: objectIds } },
+          { id: { $in: ids } },
+        ],
+      };
+      if (userId) query.userId = userId;
+
+      const res = await NoteModel.deleteMany(query);
+      return NextResponse.json({
+        success: true,
+        message: `${res.deletedCount} notes deleted from MongoDB`,
+        deletedCount: res.deletedCount,
+      });
+    }
+
+    return NextResponse.json({ success: false, error: 'Invalid delete request' }, { status: 400 });
   } catch (error) {
     return NextResponse.json(
       { success: false, error: (error as Error).message },

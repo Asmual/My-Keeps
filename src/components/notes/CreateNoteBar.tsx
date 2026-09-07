@@ -12,10 +12,13 @@ import {
   Star,
   Trash2,
   Loader2,
+  Play,
+  Pause,
 } from 'lucide-react';
 import { useNotes } from '@/hooks/useNotes';
 import { ColorPicker } from './ColorPicker';
 import { VoiceRecorder } from './VoiceRecorder';
+import { ConfirmModal } from '@/components/ui/ConfirmModal';
 import { NOTE_COLORS } from '@/lib/constants';
 import { NoteColorId, CheckItem } from '@/types/note';
 import { cn, generateId } from '@/lib/utils';
@@ -46,11 +49,15 @@ export function CreateNoteBar({ defaultNoteType = 'text' }: CreateNoteBarProps) 
   const [images, setImages] = useState<string[]>([]);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [showVoiceRecorder, setShowVoiceRecorder] = useState(false);
+  const [isPlayingAudio, setIsPlayingAudio] = useState(false);
+  const [isConfirmDeleteAudioOpen, setIsConfirmDeleteAudioOpen] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
+  const audioPreviewRef = useRef<HTMLAudioElement | null>(null);
+  const isSubmittingRef = useRef(false);
 
   // Auto-resize textarea
   useEffect(() => {
@@ -60,7 +67,48 @@ export function CreateNoteBar({ defaultNoteType = 'text' }: CreateNoteBarProps) 
     }
   }, [content]);
 
+  // Clean up audio on unmount
+  useEffect(() => {
+    return () => {
+      if (audioPreviewRef.current) {
+        audioPreviewRef.current.pause();
+        audioPreviewRef.current = null;
+      }
+    };
+  }, []);
+
+  const togglePlayAudio = () => {
+    if (!audioUrl) return;
+    if (!audioPreviewRef.current || audioPreviewRef.current.src !== audioUrl) {
+      const audio = new Audio(audioUrl);
+      audio.onended = () => setIsPlayingAudio(false);
+      audio.onerror = () => {
+        toast.error('Could not play audio memo');
+        setIsPlayingAudio(false);
+      };
+      audioPreviewRef.current = audio;
+    }
+    if (isPlayingAudio) {
+      audioPreviewRef.current.pause();
+      setIsPlayingAudio(false);
+    } else {
+      audioPreviewRef.current.play().catch(() => {
+        toast.error('Failed to play audio');
+        setIsPlayingAudio(false);
+      });
+      setIsPlayingAudio(true);
+    }
+  };
+
   const handleSaveAndClose = React.useCallback(() => {
+    if (isSubmittingRef.current) return;
+
+    if (audioPreviewRef.current) {
+      audioPreviewRef.current.pause();
+      audioPreviewRef.current = null;
+    }
+    setIsPlayingAudio(false);
+
     const hasContent =
       title.trim() ||
       content.trim() ||
@@ -68,26 +116,32 @@ export function CreateNoteBar({ defaultNoteType = 'text' }: CreateNoteBarProps) 
       images.length > 0 ||
       audioUrl;
 
-    if (hasContent) {
-      let noteType: 'text' | 'checklist' | 'image' | 'voice' = defaultNoteType;
-      if (audioUrl) noteType = 'voice';
-      else if (images.length > 0) noteType = 'image';
-      else if (checklist.length > 0 || isChecklistMode) noteType = 'checklist';
-
-      createNote({
-        title: title.trim(),
-        content: content.trim(),
-        color,
-        isPinned,
-        isImportant,
-        labels,
-        checklist: (isChecklistMode || checklist.length > 0) ? checklist : undefined,
-        noteType,
-        images: images.length > 0 ? images : undefined,
-        audioUrl: audioUrl || undefined,
-      });
+    if (!hasContent) {
+      setIsExpanded(false);
+      return;
     }
-    // Reset state
+
+    isSubmittingRef.current = true;
+
+    let noteType: 'text' | 'checklist' | 'image' | 'voice' = defaultNoteType;
+    if (audioUrl) noteType = 'voice';
+    else if (images.length > 0) noteType = 'image';
+    else if (checklist.length > 0 || isChecklistMode) noteType = 'checklist';
+
+    const payload = {
+      title: title.trim(),
+      content: content.trim(),
+      color,
+      isPinned,
+      isImportant,
+      labels,
+      checklist: isChecklistMode || checklist.length > 0 ? checklist : undefined,
+      noteType,
+      images: images.length > 0 ? images : undefined,
+      audioUrl: audioUrl || undefined,
+    };
+
+    // Reset state immediately to prevent duplicate creation
     setTitle('');
     setContent('');
     setIsPinned(false);
@@ -101,6 +155,10 @@ export function CreateNoteBar({ defaultNoteType = 'text' }: CreateNoteBarProps) 
     setAudioUrl(null);
     setShowVoiceRecorder(false);
     setIsExpanded(false);
+
+    createNote(payload).finally(() => {
+      isSubmittingRef.current = false;
+    });
   }, [
     title,
     content,
@@ -205,11 +263,22 @@ export function CreateNoteBar({ defaultNoteType = 'text' }: CreateNoteBarProps) 
           <div
             onClick={() => {
               if (!requireAuth('create notes')) return;
+              if (defaultNoteType === 'voice') {
+                setShowVoiceRecorder(true);
+              }
               setIsExpanded(true);
             }}
             className="flex items-center justify-between px-5 py-3.5 cursor-text select-none text-slate-500 dark:text-[#A7EBF2]/70"
           >
-            <span className="text-sm font-medium">Take a note...</span>
+            <span className="text-sm font-medium">
+              {defaultNoteType === 'checklist'
+                ? 'Create a checklist...'
+                : defaultNoteType === 'image'
+                ? 'Add an image note...'
+                : defaultNoteType === 'voice'
+                ? 'Record a voice note...'
+                : 'Take a note...'}
+            </span>
             <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
               <button
                 type="button"
@@ -346,12 +415,27 @@ export function CreateNoteBar({ defaultNoteType = 'text' }: CreateNoteBarProps) 
               />
             ) : audioUrl ? (
               <div className="flex items-center justify-between p-2.5 rounded-xl bg-[#54ACBF]/15 dark:bg-[#011C40] border border-[#54ACBF]/30 text-xs">
-                <span className="flex items-center gap-2 font-medium text-[#011C40] dark:text-[#A7EBF2]">
-                  <Mic className="w-3.5 h-3.5 text-[#54ACBF]" /> Voice memo attached
-                </span>
+                <div className="flex items-center gap-2 font-medium text-[#011C40] dark:text-[#A7EBF2]">
+                  <button
+                    type="button"
+                    onClick={togglePlayAudio}
+                    className="p-1.5 rounded-full bg-[#54ACBF] text-white hover:bg-[#26658C] transition-colors cursor-pointer"
+                    title={isPlayingAudio ? 'Pause' : 'Play voice memo'}
+                  >
+                    {isPlayingAudio ? (
+                      <Pause className="w-3 h-3 fill-current" />
+                    ) : (
+                      <Play className="w-3 h-3 fill-current ml-0.5" />
+                    )}
+                  </button>
+                  <span className="flex items-center gap-1.5">
+                    <Mic className="w-3.5 h-3.5 text-[#54ACBF]" />
+                    {isPlayingAudio ? 'Playing voice note...' : 'Voice memo attached'}
+                  </span>
+                </div>
                 <button
                   type="button"
-                  onClick={() => setAudioUrl(null)}
+                  onClick={() => setIsConfirmDeleteAudioOpen(true)}
                   className="p-1 text-rose-500 hover:bg-rose-100 dark:hover:bg-rose-950/60 rounded-md transition-colors cursor-pointer"
                   title="Remove voice note"
                 >
@@ -557,6 +641,23 @@ export function CreateNoteBar({ defaultNoteType = 'text' }: CreateNoteBarProps) 
           </div>
         )}
       </div>
+
+      <ConfirmModal
+        isOpen={isConfirmDeleteAudioOpen}
+        onClose={() => setIsConfirmDeleteAudioOpen(false)}
+        onConfirm={() => {
+          if (audioPreviewRef.current) {
+            audioPreviewRef.current.pause();
+            audioPreviewRef.current = null;
+          }
+          setIsPlayingAudio(false);
+          setAudioUrl(null);
+        }}
+        title="Delete voice memo?"
+        description="Are you sure you want to delete this voice memo attachment?"
+        confirmText="Delete Voice Memo"
+        variant="danger"
+      />
     </div>
   );
 }

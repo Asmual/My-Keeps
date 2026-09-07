@@ -18,7 +18,7 @@ export default function VoiceNotesPage() {
 
   return (
     <div className="max-w-7xl mx-auto">
-      <CreateNoteBar />
+      <CreateNoteBar defaultNoteType="voice" />
 
       <div className="flex items-center gap-2 mb-6 pb-4 border-b border-neutral-200/60 dark:border-neutral-800/60">
         <Mic className="w-5 h-5 text-[#54ACBF]" />
