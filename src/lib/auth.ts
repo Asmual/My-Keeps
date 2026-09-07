@@ -38,6 +38,7 @@ export const auth = betterAuth({
     google: {
       clientId: process.env.GOOGLE_CLIENT_ID || '',
       clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
+      redirectURI: process.env.GOOGLE_REDIRECT_URI || undefined,
     },
   },
   secret: process.env.BETTER_AUTH_SECRET || 'fallback-secret-for-build-and-dev-32charslong!!',

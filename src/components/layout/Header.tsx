@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
@@ -39,7 +40,50 @@ export function Header() {
   const [profileImage, setProfileImage] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  const activeAvatar = profileImage ?? session?.user?.image ?? null;
+  // Synchronize profile avatar from localStorage and MongoDB Atlas on mount / session change
+  useEffect(() => {
+    if (!session?.user) return;
+    const userId = session.user.id || session.user.email;
+    const cacheKey = `mykeeps_user_avatar_${userId}`;
+
+    let ignore = false;
+    async function loadLatestProfile() {
+      const cached = typeof window !== 'undefined' ? localStorage.getItem(cacheKey) : null;
+      if (cached !== null && !ignore) {
+        setProfileImage(cached || null);
+      }
+
+      try {
+        const params = new URLSearchParams();
+        if (session?.user?.id) params.set('userId', session.user.id);
+        if (session?.user?.email) params.set('email', session.user.email);
+
+        const res = await fetch(`/api/user/profile?${params.toString()}`);
+        if (res.ok) {
+          const json = await res.json();
+          if (!ignore && json.success && json.user) {
+            // If MongoDB has custom image, use it. Otherwise fallback to Google session image
+            const latestImage = json.user.image || session?.user?.image || null;
+            setProfileImage(latestImage);
+            if (latestImage) {
+              localStorage.setItem(cacheKey, latestImage);
+            } else {
+              localStorage.removeItem(cacheKey);
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching profile avatar in Header:', err);
+      }
+    }
+
+    loadLatestProfile();
+    return () => {
+      ignore = true;
+    };
+  }, [session?.user]);
+
+  const activeAvatar = profileImage || session?.user?.image || null;
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -166,13 +210,10 @@ export function Header() {
               className="flex items-center justify-center w-8 h-8 rounded-full overflow-hidden bg-gradient-to-tr from-[#023859] via-[#26658C] to-[#54ACBF] text-white font-semibold text-xs ring-2 ring-[#A7EBF2] dark:ring-[#26658C] shadow-sm cursor-pointer hover:opacity-90 transition-opacity"
             >
               {activeAvatar ? (
-                <Image
+                <img
                   src={activeAvatar}
                   alt="User Avatar"
-                  width={32}
-                  height={32}
                   className="w-full h-full object-cover"
-                  unoptimized
                 />
               ) : (
                 <span>{userInitial}</span>
@@ -243,7 +284,16 @@ export function Header() {
         isOpen={isProfileModalOpen}
         onClose={() => setIsProfileModalOpen(false)}
         onProfileUpdated={(updated) => {
-          if (updated.image) setProfileImage(updated.image);
+          const newImg = updated.image || null;
+          setProfileImage(newImg);
+          const userId = session?.user?.id || session?.user?.email;
+          if (userId) {
+            if (newImg) {
+              localStorage.setItem(`mykeeps_user_avatar_${userId}`, newImg);
+            } else {
+              localStorage.removeItem(`mykeeps_user_avatar_${userId}`);
+            }
+          }
           router.refresh();
         }}
       />

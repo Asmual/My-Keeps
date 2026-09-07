@@ -1,7 +1,8 @@
+/* eslint-disable @next/next/no-img-element */
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
-import Image from 'next/image';
+import React, { useState, useEffect, useRef, useSyncExternalStore } from 'react';
+import { createPortal } from 'react-dom';
 import {
   X,
   Camera,
@@ -28,12 +29,19 @@ interface ProfileModalProps {
   }) => void;
 }
 
+const emptySubscribe = () => () => {};
+
 export function ProfileModal({
   isOpen,
   onClose,
   onProfileUpdated,
 }: ProfileModalProps) {
   const { data: session } = useSession();
+  const isMounted = useSyncExternalStore(
+    emptySubscribe,
+    () => true,
+    () => false
+  );
 
   const [name, setName] = useState(() => session?.user?.name || '');
   const [image, setImage] = useState(() => session?.user?.image || '');
@@ -62,7 +70,11 @@ export function ProfileModal({
           const json = await res.json();
           if (!ignore && json.success && json.user) {
             if (json.user.name) setName(json.user.name);
-            if (json.user.image) setImage(json.user.image);
+            if (json.user.image) {
+              setImage(json.user.image);
+            } else if (session?.user?.image) {
+              setImage(session.user.image);
+            }
             if (json.user.gender) setGender(json.user.gender);
             if (json.user.phoneNumber) setPhoneNumber(json.user.phoneNumber);
           }
@@ -136,7 +148,15 @@ export function ProfileModal({
 
       const json = await res.json();
       if (res.ok && json.success) {
-        toast.success('Profile saved to MongoDB!');
+        toast.success('Profile saved successfully!');
+        const userId = session.user.id || session.user.email;
+        if (userId) {
+          if (image) {
+            localStorage.setItem(`mykeeps_user_avatar_${userId}`, image);
+          } else {
+            localStorage.removeItem(`mykeeps_user_avatar_${userId}`);
+          }
+        }
         if (onProfileUpdated) {
           onProfileUpdated({
             name: name.trim(),
@@ -157,7 +177,7 @@ export function ProfileModal({
     }
   };
 
-  if (!isOpen) return null;
+  if (!isOpen || !isMounted) return null;
 
   const userInitial = name
     ? name.charAt(0).toUpperCase()
@@ -165,14 +185,22 @@ export function ProfileModal({
     ? session.user.email.charAt(0).toUpperCase()
     : 'U';
 
-  return (
+  const isGoogleImage = Boolean(
+    image &&
+    session?.user?.image &&
+    image === session.user.image &&
+    (image.includes('googleusercontent.com') || image.includes('google.com'))
+  );
+
+  return createPortal(
     <div
       onClick={onClose}
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#011C40]/60 backdrop-blur-xs animate-in fade-in duration-150"
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 bg-[#011C40]/65 backdrop-blur-sm animate-in fade-in duration-150 overflow-y-auto"
+      style={{ minHeight: '100dvh' }}
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-md rounded-3xl p-6 bg-white dark:bg-[#023859] border border-[#A7EBF2] dark:border-[#26658C] shadow-2xl animate-in zoom-in-95 duration-150 space-y-5"
+        className="my-auto w-full max-w-md rounded-3xl p-6 bg-white dark:bg-[#023859] border border-[#A7EBF2] dark:border-[#26658C] shadow-2xl animate-in zoom-in-95 duration-150 space-y-5 max-h-[90vh] overflow-y-auto"
       >
         {/* Header */}
         <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-[#26658C]/60">
@@ -210,15 +238,13 @@ export function ProfileModal({
             {/* Avatar Upload Area */}
             <div className="flex flex-col items-center justify-center pt-1 pb-2">
               <div className="relative group">
-                <div className="w-22 h-22 rounded-full overflow-hidden ring-3 ring-[#54ACBF] ring-offset-2 dark:ring-offset-[#023859] bg-gradient-to-tr from-[#023859] via-[#26658C] to-[#54ACBF] flex items-center justify-center text-white text-2xl font-bold shadow-md">
+                <div className="w-24 h-24 rounded-full overflow-hidden ring-4 ring-[#54ACBF] ring-offset-2 dark:ring-offset-[#023859] bg-gradient-to-tr from-[#023859] via-[#26658C] to-[#54ACBF] flex items-center justify-center text-white text-3xl font-bold shadow-lg">
                   {image ? (
-                    <Image
+                    <img
                       src={image}
                       alt="Profile Avatar"
-                      width={88}
-                      height={88}
                       className="w-full h-full object-cover"
-                      unoptimized
+                      loading="eager"
                     />
                   ) : (
                     <span>{userInitial}</span>
@@ -230,7 +256,7 @@ export function ProfileModal({
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
                   title="Upload picture"
-                  className="absolute bottom-0 right-0 p-2 rounded-full bg-[#023859] text-white hover:bg-[#26658C] border-2 border-white dark:border-[#023859] shadow-md transition-transform hover:scale-105 cursor-pointer"
+                  className="absolute bottom-0 right-0 p-2.5 rounded-full bg-[#023859] hover:bg-[#26658C] text-white border-2 border-white dark:border-[#023859] shadow-md transition-all hover:scale-105 cursor-pointer"
                 >
                   <Camera className="w-4 h-4 text-[#A7EBF2]" />
                 </button>
@@ -243,6 +269,13 @@ export function ProfileModal({
                   className="hidden"
                 />
               </div>
+
+              {/* Status and remove buttons */}
+              {isGoogleImage && (
+                <span className="mt-2 text-[11px] font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2.5 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800/50">
+                  Google Account Photo
+                </span>
+              )}
 
               {image && (
                 <button
@@ -363,6 +396,7 @@ export function ProfileModal({
           </form>
         )}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
