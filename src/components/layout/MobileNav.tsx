@@ -19,7 +19,7 @@ export function MobileNav() {
   ];
 
   return (
-    <nav className="sm:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/90 dark:bg-neutral-900/90 backdrop-blur-lg border-t border-neutral-200/80 dark:border-neutral-800 flex items-center justify-around py-2 px-3 shadow-lg">
+    <nav className="sm:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-[#011C40]/95 backdrop-blur-lg border-t border-[#A7EBF2]/40 dark:border-[#26658C] flex items-center justify-around py-2.5 px-3 shadow-lg">
       {links.map((link) => {
         const Icon = link.icon;
         const isActive = pathname === link.href;
@@ -31,8 +31,8 @@ export function MobileNav() {
             className={cn(
               'flex flex-col items-center gap-1 py-1 px-3 rounded-xl text-xs font-medium transition-colors',
               isActive
-                ? 'text-amber-600 dark:text-amber-400 font-semibold'
-                : 'text-neutral-500 dark:text-neutral-400'
+                ? 'text-[#023859] dark:text-[#A7EBF2] font-bold'
+                : 'text-slate-500 dark:text-[#A7EBF2]/60'
             )}
           >
             <Icon className="w-5 h-5" />

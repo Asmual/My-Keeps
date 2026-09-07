@@ -15,18 +15,19 @@ export function Badge({
   ...props
 }: BadgeProps) {
   const variants = {
+    // Luna specification: Soft Ice Blue (#A7EBF2) with dark (#011C40) text
     default:
-      'bg-neutral-200/70 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300',
+      'bg-[#A7EBF2] text-[#011C40] border border-[#54ACBF]/50 font-semibold shadow-xs',
     outline:
-      'border border-neutral-300/80 text-neutral-600 dark:border-neutral-700 dark:text-neutral-400',
+      'border border-[#54ACBF] text-[#023859] dark:text-[#A7EBF2] bg-transparent',
     active:
-      'bg-amber-100 text-amber-900 border border-amber-300 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800',
+      'bg-[#54ACBF] text-white border border-[#26658C] font-semibold',
   };
 
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium transition-colors',
+        'inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs transition-colors',
         variants[variant],
         className
       )}
@@ -40,7 +41,7 @@ export function Badge({
             e.stopPropagation();
             onRemove();
           }}
-          className="ml-0.5 -mr-1 p-0.5 rounded-full hover:bg-black/10 dark:hover:bg-white/10 text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200"
+          className="ml-0.5 -mr-1 p-0.5 rounded-full hover:bg-[#011C40]/20 text-[#011C40]/80 hover:text-[#011C40] cursor-pointer"
           aria-label="Remove tag"
         >
           <X className="w-3 h-3" />

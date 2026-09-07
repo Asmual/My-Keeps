@@ -54,18 +54,19 @@ export function NoteGrid({
 
   const gridContainerClass =
     viewMode === 'grid'
-      ? 'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4'
-      : 'max-w-2xl mx-auto flex flex-col gap-3';
+      ? 'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5'
+      : 'max-w-2xl mx-auto flex flex-col gap-3.5';
 
   return (
     <div className="w-full space-y-8 pb-16">
       {/* Pinned Section */}
       {pinnedNotes.length > 0 && (
         <div>
-          <div className="flex items-center gap-2 mb-3 px-1">
-            <span className="text-[11px] font-bold uppercase tracking-widest text-neutral-400 dark:text-neutral-500">
-              Pinned ({pinnedNotes.length})
+          <div className="flex items-center gap-2 mb-3.5 px-1">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-[#54ACBF] dark:text-[#A7EBF2]">
+              PINNED ({pinnedNotes.length})
             </span>
+            <div className="flex-1 h-px bg-[#A7EBF2]/40 dark:bg-[#26658C]" />
           </div>
           <div className={gridContainerClass}>
             {pinnedNotes.map((note) => (
@@ -79,10 +80,11 @@ export function NoteGrid({
       {otherNotes.length > 0 && (
         <div>
           {pinnedNotes.length > 0 && (
-            <div className="flex items-center gap-2 mb-3 px-1">
-              <span className="text-[11px] font-bold uppercase tracking-widest text-neutral-400 dark:text-neutral-500">
-                Others
+            <div className="flex items-center gap-2 mb-3.5 px-1">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-[#54ACBF]">
+                OTHERS
               </span>
+              <div className="flex-1 h-px bg-slate-200 dark:bg-[#26658C]/60" />
             </div>
           )}
           <div className={gridContainerClass}>

@@ -43,12 +43,14 @@ export function NoteCard({ note, isTrashView = false }: NoteCardProps) {
   const colorConfig = NOTE_COLORS[note.color] || NOTE_COLORS.default;
 
   const handleCardClick = () => {
-    if (isTrashView) return; // In trash, edit is disabled
+    if (isTrashView) return;
+    if (!requireAuth('edit notes')) return;
     setActiveEditNote(note);
   };
 
   const handleToggleCheckItem = (e: React.MouseEvent, itemId: string) => {
     e.stopPropagation();
+    if (!requireAuth('update checklist')) return;
     if (!note.checklist) return;
     const updated = note.checklist.map((item) =>
       item.id === itemId ? { ...item, completed: !item.completed } : item
@@ -70,19 +72,19 @@ export function NoteCard({ note, isTrashView = false }: NoteCardProps) {
     <div
       onClick={handleCardClick}
       className={cn(
-        'group relative flex flex-col justify-between rounded-2xl p-4 transition-all duration-200 border cursor-pointer select-none',
+        'group relative flex flex-col justify-between rounded-2xl p-4 sm:p-5 transition-all duration-200 border cursor-pointer select-none',
         colorConfig.bgLight,
         colorConfig.bgDark,
         colorConfig.borderLight,
         colorConfig.borderDark,
-        'hover:shadow-md hover:-translate-y-0.5 shadow-xs'
+        'hover:shadow-lg hover:-translate-y-1 shadow-xs hover:border-[#54ACBF] dark:hover:border-[#54ACBF]'
       )}
     >
       {/* Top Header: Title & Pin Button */}
       <div>
         <div className="flex items-start justify-between gap-2 mb-2">
           {note.title ? (
-            <h3 className="font-semibold text-neutral-900 dark:text-neutral-100 text-base leading-snug break-words flex-1">
+            <h3 className="font-semibold text-[#011C40] dark:text-white text-base leading-snug break-words flex-1">
               {note.title}
             </h3>
           ) : (
@@ -98,10 +100,10 @@ export function NoteCard({ note, isTrashView = false }: NoteCardProps) {
               }}
               title={note.isPinned ? 'Unpin note' : 'Pin note'}
               className={cn(
-                'p-1.5 rounded-full transition-opacity cursor-pointer',
+                'p-1.5 rounded-full transition-all cursor-pointer',
                 note.isPinned
-                  ? 'text-amber-600 dark:text-amber-400 opacity-100 bg-amber-100 dark:bg-amber-950/80'
-                  : 'text-neutral-400 opacity-0 group-hover:opacity-100 hover:text-neutral-700 dark:hover:text-neutral-200 hover:bg-black/5 dark:hover:bg-white/5'
+                  ? 'text-[#011C40] bg-[#A7EBF2] shadow-xs'
+                  : 'text-slate-400 opacity-0 group-hover:opacity-100 hover:text-[#011C40] dark:hover:text-[#A7EBF2] hover:bg-[#A7EBF2]/20 dark:hover:bg-[#26658C]/40'
               )}
             >
               <Pin className={cn('w-4 h-4', note.isPinned && 'fill-current')} />
@@ -111,7 +113,7 @@ export function NoteCard({ note, isTrashView = false }: NoteCardProps) {
 
         {/* Content Body */}
         {note.content && (
-          <p className="text-sm text-neutral-700 dark:text-neutral-300 whitespace-pre-wrap break-words leading-relaxed line-clamp-8 mb-3">
+          <p className="text-sm text-slate-700 dark:text-slate-200 whitespace-pre-wrap break-words leading-relaxed line-clamp-8 mb-3">
             {note.content}
           </p>
         )}
@@ -123,18 +125,18 @@ export function NoteCard({ note, isTrashView = false }: NoteCardProps) {
               <div
                 key={item.id}
                 onClick={(e) => handleToggleCheckItem(e, item.id)}
-                className="flex items-center gap-2 text-xs text-neutral-700 dark:text-neutral-300 hover:opacity-80"
+                className="flex items-center gap-2 text-xs text-slate-700 dark:text-slate-200 hover:opacity-80"
               >
                 <input
                   type="checkbox"
                   checked={item.completed}
                   readOnly
-                  className="rounded accent-amber-500 cursor-pointer pointer-events-none w-3.5 h-3.5"
+                  className="rounded accent-[#023859] dark:accent-[#54ACBF] cursor-pointer pointer-events-none w-3.5 h-3.5"
                 />
                 <span
                   className={cn(
                     'truncate flex-1',
-                    item.completed && 'line-through text-neutral-400 dark:text-neutral-500'
+                    item.completed && 'line-through text-slate-400 dark:text-[#A7EBF2]/50'
                   )}
                 >
                   {item.text}
@@ -142,14 +144,14 @@ export function NoteCard({ note, isTrashView = false }: NoteCardProps) {
               </div>
             ))}
             {note.checklist.length > 5 && (
-              <p className="text-xs text-neutral-400 italic pt-0.5">
+              <p className="text-xs text-[#54ACBF] italic pt-0.5">
                 +{note.checklist.length - 5} more items
               </p>
             )}
           </div>
         )}
 
-        {/* Labels / Tags */}
+        {/* Labels / Tags (Soft Ice Blue with dark text) */}
         {note.labels && note.labels.length > 0 && (
           <div className="flex flex-wrap gap-1.5 mb-2.5">
             {note.labels.map((lbl) => (
@@ -169,7 +171,7 @@ export function NoteCard({ note, isTrashView = false }: NoteCardProps) {
         {showTagInput && !isTrashView && (
           <div
             onClick={(e) => e.stopPropagation()}
-            className="flex items-center gap-1.5 mb-2 animate-in fade-in duration-100"
+            className="flex items-center gap-1.5 mb-2.5 animate-in fade-in duration-100"
           >
             <input
               type="text"
@@ -178,12 +180,12 @@ export function NoteCard({ note, isTrashView = false }: NoteCardProps) {
               onKeyDown={handleAddTag}
               placeholder="Tag name..."
               autoFocus
-              className="px-2 py-0.5 text-xs rounded-md bg-white/70 dark:bg-neutral-800/80 border border-neutral-300 dark:border-neutral-700 text-neutral-800 dark:text-neutral-200 focus:outline-none"
+              className="px-2.5 py-1 text-xs rounded-lg bg-white dark:bg-[#011C40] border border-[#A7EBF2] dark:border-[#26658C] text-[#011C40] dark:text-white focus:outline-none"
             />
             <button
               type="button"
               onClick={() => handleAddTag()}
-              className="text-xs px-2 py-0.5 bg-neutral-200 dark:bg-neutral-700 rounded text-neutral-800 dark:text-neutral-200 font-medium"
+              className="text-xs px-2.5 py-1 bg-[#023859] hover:bg-[#26658C] text-white rounded-lg font-medium cursor-pointer"
             >
               Add
             </button>
@@ -191,8 +193,8 @@ export function NoteCard({ note, isTrashView = false }: NoteCardProps) {
         )}
       </div>
 
-      {/* Card Footer: Timestamp & Action Buttons */}
-      <div className="pt-2 mt-auto flex items-center justify-between border-t border-black/5 dark:border-white/5 text-xs text-neutral-400">
+      {/* Card Footer: Timestamp & Action Toolbar */}
+      <div className="pt-2 mt-auto flex items-center justify-between border-t border-black/5 dark:border-white/10 text-xs text-slate-400 dark:text-[#A7EBF2]/60">
         <span className="text-[11px] truncate">
           {formatDate(note.updatedAt || note.createdAt)}
         </span>
@@ -215,7 +217,7 @@ export function NoteCard({ note, isTrashView = false }: NoteCardProps) {
                 setShowTagInput((prev) => !prev);
               }}
               title="Add tag"
-              className="p-1.5 rounded-full text-neutral-600 dark:text-neutral-300 hover:bg-neutral-200/60 dark:hover:bg-neutral-700/60 transition-colors"
+              className="p-1.5 rounded-full text-slate-600 dark:text-[#A7EBF2]/80 hover:bg-[#A7EBF2]/20 dark:hover:bg-[#26658C]/50 transition-colors cursor-pointer"
             >
               <Tag className="w-3.5 h-3.5" />
             </button>
@@ -225,7 +227,7 @@ export function NoteCard({ note, isTrashView = false }: NoteCardProps) {
                 type="button"
                 onClick={() => unarchiveNote(note.id)}
                 title="Unarchive note"
-                className="p-1.5 rounded-full text-neutral-600 dark:text-neutral-300 hover:bg-neutral-200/60 dark:hover:bg-neutral-700/60 transition-colors"
+                className="p-1.5 rounded-full text-slate-600 dark:text-[#A7EBF2]/80 hover:bg-[#A7EBF2]/20 dark:hover:bg-[#26658C]/50 transition-colors cursor-pointer"
               >
                 <ArchiveRestore className="w-3.5 h-3.5" />
               </button>
@@ -234,7 +236,7 @@ export function NoteCard({ note, isTrashView = false }: NoteCardProps) {
                 type="button"
                 onClick={() => archiveNote(note.id)}
                 title="Archive note"
-                className="p-1.5 rounded-full text-neutral-600 dark:text-neutral-300 hover:bg-neutral-200/60 dark:hover:bg-neutral-700/60 transition-colors"
+                className="p-1.5 rounded-full text-slate-600 dark:text-[#A7EBF2]/80 hover:bg-[#A7EBF2]/20 dark:hover:bg-[#26658C]/50 transition-colors cursor-pointer"
               >
                 <Archive className="w-3.5 h-3.5" />
               </button>
@@ -244,7 +246,7 @@ export function NoteCard({ note, isTrashView = false }: NoteCardProps) {
               type="button"
               onClick={() => trashNote(note.id)}
               title="Move to trash"
-              className="p-1.5 rounded-full text-neutral-600 dark:text-neutral-300 hover:bg-rose-100 dark:hover:bg-rose-950/60 hover:text-rose-600 transition-colors"
+              className="p-1.5 rounded-full text-slate-600 dark:text-[#A7EBF2]/80 hover:bg-rose-100 dark:hover:bg-rose-950/60 hover:text-rose-600 transition-colors cursor-pointer"
             >
               <Trash2 className="w-3.5 h-3.5" />
             </button>
@@ -259,7 +261,7 @@ export function NoteCard({ note, isTrashView = false }: NoteCardProps) {
               type="button"
               onClick={() => restoreNote(note.id)}
               title="Restore note"
-              className="p-1.5 rounded-full text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-950/60 transition-colors"
+              className="p-1.5 rounded-full text-[#54ACBF] hover:bg-[#A7EBF2]/20 dark:hover:bg-[#26658C]/50 transition-colors cursor-pointer"
             >
               <RotateCcw className="w-3.5 h-3.5" />
             </button>
@@ -267,7 +269,7 @@ export function NoteCard({ note, isTrashView = false }: NoteCardProps) {
               type="button"
               onClick={() => deletePermanently(note.id)}
               title="Delete permanently"
-              className="p-1.5 rounded-full text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-950/60 transition-colors"
+              className="p-1.5 rounded-full text-rose-500 hover:bg-rose-100 dark:hover:bg-rose-950/60 transition-colors cursor-pointer"
             >
               <Trash2 className="w-3.5 h-3.5" />
             </button>

@@ -28,38 +28,38 @@ export function EmptyState({ type, customMessage }: EmptyStateProps) {
     notes: {
       icon: Lightbulb,
       title: 'No notes yet',
-      description: 'Capture your thoughts, ideas, tasks, and inspirations above.',
-      colorClass: 'text-amber-500 bg-amber-500/10',
+      description: 'Capture thoughts, tasks, and ideas above in Luna workspace.',
+      colorClass: 'text-[#54ACBF] bg-[#54ACBF]/15 dark:bg-[#023859] border border-[#54ACBF]/40',
     },
     archive: {
       icon: Archive,
       title: 'Your archive is empty',
-      description: 'Notes you archive will appear here for safe keeping without cluttering your main space.',
-      colorClass: 'text-blue-500 bg-blue-500/10',
+      description: 'Notes you archive will appear here safely preserved.',
+      colorClass: 'text-[#54ACBF] bg-[#A7EBF2]/20 dark:bg-[#023859] border border-[#26658C]',
     },
     trash: {
       icon: Trash2,
       title: 'Trash is empty',
-      description: 'Deleted notes will be placed here. You can restore them anytime or empty the trash.',
-      colorClass: 'text-rose-500 bg-rose-500/10',
+      description: 'Deleted notes will be placed here. You can restore them anytime.',
+      colorClass: 'text-rose-400 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900',
     },
     reminders: {
       icon: Bell,
       title: 'No upcoming reminders',
-      description: 'Add reminders to your notes to get notified about critical deadlines and tasks.',
-      colorClass: 'text-purple-500 bg-purple-500/10',
+      description: 'Add reminders to stay on top of critical deadlines.',
+      colorClass: 'text-[#A7EBF2] bg-[#26658C]/30 dark:bg-[#023859] border border-[#26658C]',
     },
     search: {
       icon: SearchX,
       title: 'No matching notes',
       description: customMessage || 'Try searching for different keywords or checking for spelling errors.',
-      colorClass: 'text-neutral-500 bg-neutral-500/10',
+      colorClass: 'text-[#54ACBF] bg-slate-100 dark:bg-[#023859] border border-[#26658C]',
     },
     label: {
       icon: Tag,
       title: 'No notes with this label',
-      description: 'Tag your notes to organize them neatly by topics or projects.',
-      colorClass: 'text-emerald-500 bg-emerald-500/10',
+      description: 'Tag your notes to organize them neatly by topics.',
+      colorClass: 'text-[#54ACBF] bg-[#A7EBF2]/20 dark:bg-[#023859] border border-[#54ACBF]',
     },
   };
 
@@ -71,10 +71,10 @@ export function EmptyState({ type, customMessage }: EmptyStateProps) {
       <div className={`p-4 rounded-3xl ${current.colorClass} mb-4 transition-transform hover:scale-105 shadow-inner`}>
         <Icon className="w-10 h-10" />
       </div>
-      <h3 className="text-lg font-semibold text-neutral-800 dark:text-neutral-200 mb-1">
+      <h3 className="text-lg font-bold text-[#011C40] dark:text-white mb-1">
         {current.title}
       </h3>
-      <p className="text-sm text-neutral-500 dark:text-neutral-400 leading-relaxed">
+      <p className="text-sm text-slate-500 dark:text-[#A7EBF2]/70 leading-relaxed">
         {current.description}
       </p>
     </div>

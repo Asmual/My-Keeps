@@ -9,21 +9,22 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
 export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant = 'secondary', size = 'md', children, ...props }, ref) => {
     const baseStyles =
-      'inline-flex items-center justify-center font-medium transition-all duration-150 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/50 disabled:opacity-50 disabled:pointer-events-none cursor-pointer';
+      'inline-flex items-center justify-center font-medium transition-all duration-150 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#54ACBF]/50 disabled:opacity-50 disabled:pointer-events-none cursor-pointer';
 
     const variants = {
+      // Primary Action: Deep Aqua Blue (#023859 hover to #26658C with white text #FFFFFF in both light & dark modes)
       primary:
-        'bg-amber-500 hover:bg-amber-600 text-white shadow-sm hover:shadow active:scale-[0.98]',
+        'bg-[#023859] hover:bg-[#26658C] text-white shadow-sm hover:shadow active:scale-[0.98] border border-[#26658C]/50',
       secondary:
-        'bg-neutral-100 hover:bg-neutral-200/80 text-neutral-800 dark:bg-neutral-800 dark:hover:bg-neutral-700 dark:text-neutral-200',
+        'bg-slate-100 hover:bg-slate-200/80 text-[#011C40] dark:bg-[#023859]/80 dark:hover:bg-[#26658C]/80 dark:text-[#A7EBF2] border border-transparent dark:border-[#26658C]/60',
       ghost:
-        'hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100',
+        'hover:bg-[#A7EBF2]/20 dark:hover:bg-[#023859]/70 text-[#011C40] dark:text-[#A7EBF2]/90 hover:text-[#023859] dark:hover:text-white',
       danger:
-        'bg-rose-500 hover:bg-rose-600 text-white shadow-sm hover:shadow active:scale-[0.98]',
+        'bg-rose-600 hover:bg-rose-700 text-white shadow-sm hover:shadow active:scale-[0.98]',
       outline:
-        'border border-neutral-300 dark:border-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-700 dark:text-neutral-300',
+        'border border-[#26658C]/40 dark:border-[#26658C] hover:bg-slate-100 dark:hover:bg-[#023859] text-[#011C40] dark:text-[#A7EBF2]',
       icon:
-        'p-2 text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-100 hover:bg-neutral-200/60 dark:hover:bg-neutral-800/80 rounded-full',
+        'p-2 text-slate-500 hover:text-[#011C40] dark:text-[#A7EBF2]/80 dark:hover:text-[#A7EBF2] hover:bg-[#A7EBF2]/20 dark:hover:bg-[#26658C]/40 rounded-full transition-colors',
     };
 
     const sizes = {

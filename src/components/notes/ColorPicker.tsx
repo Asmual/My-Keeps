@@ -46,7 +46,7 @@ export function ColorPicker({
           setIsOpen((prev) => !prev);
         }}
         className={cn(
-          'p-1.5 rounded-full text-neutral-600 dark:text-neutral-300 hover:bg-neutral-200/70 dark:hover:bg-neutral-700/60 transition-colors cursor-pointer',
+          'p-1.5 rounded-full text-slate-600 dark:text-[#A7EBF2]/80 hover:bg-[#A7EBF2]/20 dark:hover:bg-[#26658C]/50 transition-colors cursor-pointer',
           buttonClassName
         )}
       >
@@ -56,7 +56,7 @@ export function ColorPicker({
       {isOpen && (
         <div
           onClick={(e) => e.stopPropagation()}
-          className="absolute z-50 bottom-full mb-2 left-0 sm:left-1/2 sm:-translate-x-1/2 p-2 bg-white dark:bg-neutral-800 rounded-2xl shadow-xl border border-neutral-200 dark:border-neutral-700 grid grid-cols-6 gap-1.5 w-[220px] animate-in fade-in zoom-in-95 duration-150"
+          className="absolute z-50 bottom-full mb-2 left-0 sm:left-1/2 sm:-translate-x-1/2 p-2.5 bg-white dark:bg-[#023859] rounded-2xl shadow-xl border border-[#A7EBF2] dark:border-[#26658C] grid grid-cols-6 gap-2 w-[230px] animate-in fade-in zoom-in-95 duration-150"
         >
           {Object.values(NOTE_COLORS).map((colorConfig) => {
             const isSelected = currentColor === colorConfig.id;
@@ -70,13 +70,13 @@ export function ColorPicker({
                   setIsOpen(false);
                 }}
                 className={cn(
-                  'w-7 h-7 rounded-full transition-transform hover:scale-110 flex items-center justify-center border border-black/10 dark:border-white/15 relative cursor-pointer',
-                  isSelected && 'ring-2 ring-amber-500 ring-offset-1 dark:ring-offset-neutral-900'
+                  'w-7 h-7 rounded-full transition-transform hover:scale-110 flex items-center justify-center border border-black/15 dark:border-white/20 relative cursor-pointer',
+                  isSelected && 'ring-2 ring-[#54ACBF] ring-offset-1 dark:ring-offset-[#011C40]'
                 )}
                 style={{ backgroundColor: colorConfig.dotColor }}
               >
                 {isSelected && (
-                  <Check className="w-3.5 h-3.5 text-neutral-800 drop-shadow-sm stroke-[2.5]" />
+                  <Check className="w-3.5 h-3.5 text-white drop-shadow-sm stroke-[2.5]" />
                 )}
               </button>
             );

@@ -89,12 +89,12 @@ function NoteEditModalContent({ note, onClose }: NoteEditModalContentProps) {
   return (
     <div
       onClick={handleSaveAndClose}
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-in fade-in duration-150"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#011C40]/60 backdrop-blur-xs animate-in fade-in duration-150"
     >
       <div
         onClick={(e) => e.stopPropagation()}
         className={cn(
-          'w-full max-w-xl rounded-3xl p-6 shadow-2xl border transition-all duration-200 animate-in zoom-in-95',
+          'w-full max-w-xl rounded-3xl p-6 sm:p-7 shadow-2xl border transition-all duration-200 animate-in zoom-in-95',
           colorConfig.bgLight,
           colorConfig.bgDark,
           colorConfig.borderLight,
@@ -108,7 +108,7 @@ function NoteEditModalContent({ note, onClose }: NoteEditModalContentProps) {
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="Title"
-            className="w-full bg-transparent font-semibold text-lg text-neutral-900 dark:text-neutral-50 placeholder-neutral-400 focus:outline-none"
+            className="w-full bg-transparent font-semibold text-lg text-[#011C40] dark:text-white placeholder-slate-400 dark:placeholder-[#A7EBF2]/50 focus:outline-none"
           />
           <button
             type="button"
@@ -116,8 +116,8 @@ function NoteEditModalContent({ note, onClose }: NoteEditModalContentProps) {
             className={cn(
               'p-2 rounded-full transition-colors cursor-pointer',
               isPinned
-                ? 'text-amber-600 dark:text-amber-400 bg-amber-100 dark:bg-amber-950/80'
-                : 'text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 hover:bg-black/5 dark:hover:bg-white/5'
+                ? 'text-[#011C40] bg-[#A7EBF2]'
+                : 'text-slate-400 hover:text-[#011C40] dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/10'
             )}
             title={isPinned ? 'Unpin note' : 'Pin note'}
           >
@@ -131,12 +131,12 @@ function NoteEditModalContent({ note, onClose }: NoteEditModalContentProps) {
           onChange={(e) => setContent(e.target.value)}
           placeholder="Note details..."
           rows={6}
-          className="w-full bg-transparent text-sm text-neutral-800 dark:text-neutral-200 placeholder-neutral-400 resize-none focus:outline-none mb-4 leading-relaxed"
+          className="w-full bg-transparent text-sm text-[#011C40] dark:text-slate-100 placeholder-slate-400 dark:placeholder-[#A7EBF2]/50 resize-none focus:outline-none mb-4 leading-relaxed"
         />
 
         {/* Checklist */}
         {checklist.length > 0 && (
-          <div className="space-y-2 mb-4 border-t border-black/5 dark:border-white/5 pt-3">
+          <div className="space-y-2 mb-4 border-t border-black/5 dark:border-white/10 pt-3">
             {checklist.map((item, idx) => (
               <div key={item.id} className="flex items-center gap-2 group text-sm">
                 <input
@@ -149,12 +149,12 @@ function NoteEditModalContent({ note, onClose }: NoteEditModalContentProps) {
                       )
                     )
                   }
-                  className="rounded accent-amber-500 cursor-pointer"
+                  className="rounded accent-[#023859] dark:accent-[#54ACBF] cursor-pointer"
                 />
                 <span
                   className={cn(
-                    'flex-1 text-neutral-800 dark:text-neutral-200',
-                    item.completed && 'line-through text-neutral-400 dark:text-neutral-500'
+                    'flex-1 text-[#011C40] dark:text-white',
+                    item.completed && 'line-through text-slate-400 dark:text-[#A7EBF2]/50'
                   )}
                 >
                   {item.text}
@@ -162,21 +162,21 @@ function NoteEditModalContent({ note, onClose }: NoteEditModalContentProps) {
                 <button
                   type="button"
                   onClick={() => setChecklist((prev) => prev.filter((_, i) => i !== idx))}
-                  className="p-1 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 cursor-pointer"
+                  className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-white cursor-pointer"
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
               </div>
             ))}
             <div className="flex items-center gap-2 pt-1">
-              <Plus className="w-4 h-4 text-neutral-400" />
+              <Plus className="w-4 h-4 text-[#54ACBF]" />
               <input
                 type="text"
                 value={newCheckItem}
                 onChange={(e) => setNewCheckItem(e.target.value)}
                 onKeyDown={handleAddCheckItem}
                 placeholder="Add checklist item..."
-                className="w-full bg-transparent text-sm text-neutral-800 dark:text-neutral-200 placeholder-neutral-400 focus:outline-none"
+                className="w-full bg-transparent text-sm text-[#011C40] dark:text-white placeholder-slate-400 dark:placeholder-[#A7EBF2]/50 focus:outline-none"
               />
             </div>
           </div>
@@ -206,23 +206,23 @@ function NoteEditModalContent({ note, onClose }: NoteEditModalContentProps) {
               onKeyDown={handleAddLabel}
               placeholder="Tag name..."
               autoFocus
-              className="px-2.5 py-1 text-xs rounded-lg bg-neutral-100 dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 text-neutral-800 dark:text-neutral-200 focus:outline-none"
+              className="px-2.5 py-1 text-xs rounded-lg bg-slate-100 dark:bg-[#011C40] border border-slate-200 dark:border-[#26658C] text-[#011C40] dark:text-white focus:outline-none"
             />
-            <Button size="sm" variant="secondary" onClick={() => handleAddLabel()}>
+            <Button size="sm" variant="primary" onClick={() => handleAddLabel()}>
               Add
             </Button>
             <button
               type="button"
               onClick={() => setShowLabelInput(false)}
-              className="text-neutral-400 hover:text-neutral-600 cursor-pointer"
+              className="text-slate-400 hover:text-slate-600 dark:hover:text-white cursor-pointer"
             >
               <X className="w-3.5 h-3.5" />
             </button>
           </div>
         )}
 
-        {/* Footer toolbar */}
-        <div className="flex items-center justify-between pt-4 border-t border-black/5 dark:border-white/5">
+        {/* Footer toolbar (Luna palette) */}
+        <div className="flex items-center justify-between pt-4 border-t border-black/5 dark:border-white/10">
           <div className="flex items-center gap-1.5">
             <ColorPicker currentColor={color} onSelectColor={setColor} />
 
@@ -230,7 +230,7 @@ function NoteEditModalContent({ note, onClose }: NoteEditModalContentProps) {
               type="button"
               onClick={() => setShowLabelInput((prev) => !prev)}
               title="Add tag"
-              className="p-1.5 rounded-full text-neutral-600 dark:text-neutral-300 hover:bg-neutral-200/60 dark:hover:bg-neutral-700/60 transition-colors cursor-pointer"
+              className="p-1.5 rounded-full text-slate-600 dark:text-[#A7EBF2]/80 hover:bg-[#A7EBF2]/20 dark:hover:bg-[#26658C]/50 transition-colors cursor-pointer"
             >
               <Tag className="w-4 h-4" />
             </button>
@@ -243,7 +243,7 @@ function NoteEditModalContent({ note, onClose }: NoteEditModalContentProps) {
                   onClose();
                 }}
                 title="Unarchive"
-                className="p-1.5 rounded-full text-neutral-600 dark:text-neutral-300 hover:bg-neutral-200/60 dark:hover:bg-neutral-700/60 transition-colors cursor-pointer"
+                className="p-1.5 rounded-full text-slate-600 dark:text-[#A7EBF2]/80 hover:bg-[#A7EBF2]/20 dark:hover:bg-[#26658C]/50 transition-colors cursor-pointer"
               >
                 <ArchiveRestore className="w-4 h-4" />
               </button>
@@ -255,7 +255,7 @@ function NoteEditModalContent({ note, onClose }: NoteEditModalContentProps) {
                   onClose();
                 }}
                 title="Archive"
-                className="p-1.5 rounded-full text-neutral-600 dark:text-neutral-300 hover:bg-neutral-200/60 dark:hover:bg-neutral-700/60 transition-colors cursor-pointer"
+                className="p-1.5 rounded-full text-slate-600 dark:text-[#A7EBF2]/80 hover:bg-[#A7EBF2]/20 dark:hover:bg-[#26658C]/50 transition-colors cursor-pointer"
               >
                 <Archive className="w-4 h-4" />
               </button>
@@ -268,7 +268,7 @@ function NoteEditModalContent({ note, onClose }: NoteEditModalContentProps) {
                 onClose();
               }}
               title="Move to trash"
-              className="p-1.5 rounded-full text-neutral-600 dark:text-neutral-300 hover:bg-rose-100 dark:hover:bg-rose-950/60 hover:text-rose-600 transition-colors cursor-pointer"
+              className="p-1.5 rounded-full text-slate-600 dark:text-[#A7EBF2]/80 hover:bg-rose-100 dark:hover:bg-rose-950/60 hover:text-rose-600 transition-colors cursor-pointer"
             >
               <Trash2 className="w-4 h-4" />
             </button>
@@ -278,7 +278,7 @@ function NoteEditModalContent({ note, onClose }: NoteEditModalContentProps) {
             variant="primary"
             size="sm"
             onClick={handleSaveAndClose}
-            className="px-5 font-semibold"
+            className="px-6 font-semibold"
           >
             Done
           </Button>

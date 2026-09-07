@@ -114,7 +114,7 @@ export function CreateNoteBar() {
     setShowLabelInput(false);
   };
 
-  const activeColorConfig = NOTE_COLORS[color];
+  const activeColorConfig = NOTE_COLORS[color] || NOTE_COLORS.default;
 
   return (
     <div className="w-full max-w-2xl mx-auto my-6 px-3">
@@ -126,7 +126,9 @@ export function CreateNoteBar() {
           activeColorConfig.bgDark,
           activeColorConfig.borderLight,
           activeColorConfig.borderDark,
-          isExpanded ? 'shadow-md ring-1 ring-black/5 dark:ring-white/10' : 'hover:shadow'
+          isExpanded
+            ? 'shadow-lg ring-1 ring-[#54ACBF]/30'
+            : 'hover:shadow-md hover:border-[#54ACBF]/60 dark:hover:border-[#54ACBF]'
         )}
       >
         {!isExpanded ? (
@@ -136,7 +138,7 @@ export function CreateNoteBar() {
               if (!requireAuth('create notes')) return;
               setIsExpanded(true);
             }}
-            className="flex items-center justify-between px-4 py-3 cursor-text select-none text-neutral-500 dark:text-neutral-400"
+            className="flex items-center justify-between px-5 py-3.5 cursor-text select-none text-slate-500 dark:text-[#A7EBF2]/70"
           >
             <span className="text-sm font-medium">Take a note...</span>
             <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
@@ -147,7 +149,7 @@ export function CreateNoteBar() {
                   setIsChecklistMode(true);
                   setIsExpanded(true);
                 }}
-                className="p-2 rounded-full hover:bg-neutral-200/60 dark:hover:bg-neutral-700/60 transition-colors text-neutral-500 dark:text-neutral-400"
+                className="p-2 rounded-full hover:bg-[#A7EBF2]/20 dark:hover:bg-[#26658C]/50 transition-colors text-slate-500 dark:text-[#54ACBF] cursor-pointer"
                 title="New list"
               >
                 <CheckSquare className="w-4 h-4" />
@@ -156,7 +158,7 @@ export function CreateNoteBar() {
           </div>
         ) : (
           // Expanded State
-          <div className="p-4 space-y-3 animate-in fade-in duration-150">
+          <div className="p-4 sm:p-5 space-y-3.5 animate-in fade-in duration-150">
             {/* Title & Pin row */}
             <div className="flex items-center justify-between gap-2">
               <input
@@ -165,7 +167,7 @@ export function CreateNoteBar() {
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="Title"
                 autoFocus
-                className="w-full bg-transparent font-medium text-base text-neutral-900 dark:text-neutral-50 placeholder-neutral-400 focus:outline-none"
+                className="w-full bg-transparent font-semibold text-base text-[#011C40] dark:text-white placeholder-slate-400 dark:placeholder-[#A7EBF2]/50 focus:outline-none"
               />
               <button
                 type="button"
@@ -173,8 +175,8 @@ export function CreateNoteBar() {
                 className={cn(
                   'p-1.5 rounded-full transition-colors cursor-pointer',
                   isPinned
-                    ? 'text-amber-600 dark:text-amber-400 bg-amber-100 dark:bg-amber-950/80'
-                    : 'text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 hover:bg-black/5 dark:hover:bg-white/5'
+                    ? 'text-[#011C40] dark:text-[#011C40] bg-[#A7EBF2]'
+                    : 'text-slate-400 hover:text-[#011C40] dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/10'
                 )}
                 title={isPinned ? 'Unpin note' : 'Pin note'}
               >
@@ -190,7 +192,7 @@ export function CreateNoteBar() {
                 onChange={(e) => setContent(e.target.value)}
                 placeholder="Take a note..."
                 rows={3}
-                className="w-full bg-transparent text-sm text-neutral-800 dark:text-neutral-200 placeholder-neutral-400 resize-none focus:outline-none"
+                className="w-full bg-transparent text-sm text-[#011C40] dark:text-[#F8FAFC] placeholder-slate-400 dark:placeholder-[#A7EBF2]/50 resize-none focus:outline-none leading-relaxed"
               />
             ) : (
               <div className="space-y-2 pt-1">
@@ -206,12 +208,12 @@ export function CreateNoteBar() {
                           )
                         );
                       }}
-                      className="rounded accent-amber-500 cursor-pointer"
+                      className="rounded accent-[#023859] dark:accent-[#54ACBF] cursor-pointer"
                     />
                     <span
                       className={cn(
-                        'flex-1 text-sm text-neutral-800 dark:text-neutral-200',
-                        item.completed && 'line-through text-neutral-400 dark:text-neutral-500'
+                        'flex-1 text-sm text-[#011C40] dark:text-white',
+                        item.completed && 'line-through text-slate-400 dark:text-[#A7EBF2]/50'
                       )}
                     >
                       {item.text}
@@ -221,21 +223,21 @@ export function CreateNoteBar() {
                       onClick={() =>
                         setChecklist((prev) => prev.filter((_, i) => i !== idx))
                       }
-                      className="opacity-0 group-hover:opacity-100 p-1 text-neutral-400 hover:text-neutral-600 transition-opacity"
+                      className="opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-slate-600 dark:hover:text-white transition-opacity cursor-pointer"
                     >
                       <X className="w-3.5 h-3.5" />
                     </button>
                   </div>
                 ))}
                 <div className="flex items-center gap-2 pt-1">
-                  <Plus className="w-4 h-4 text-neutral-400" />
+                  <Plus className="w-4 h-4 text-[#54ACBF]" />
                   <input
                     type="text"
                     value={newCheckItem}
                     onChange={(e) => setNewCheckItem(e.target.value)}
                     onKeyDown={handleAddCheckItem}
                     placeholder="Add list item and press Enter..."
-                    className="w-full bg-transparent text-sm text-neutral-800 dark:text-neutral-200 placeholder-neutral-400 focus:outline-none"
+                    className="w-full bg-transparent text-sm text-[#011C40] dark:text-white placeholder-slate-400 dark:placeholder-[#A7EBF2]/50 focus:outline-none"
                   />
                 </div>
               </div>
@@ -265,23 +267,23 @@ export function CreateNoteBar() {
                   onKeyDown={handleAddLabel}
                   placeholder="Enter tag name & press Enter..."
                   autoFocus
-                  className="px-2.5 py-1 text-xs rounded-lg bg-neutral-100 dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 text-neutral-800 dark:text-neutral-200 focus:outline-none"
+                  className="px-2.5 py-1 text-xs rounded-lg bg-slate-100 dark:bg-[#011C40] border border-slate-200 dark:border-[#26658C] text-[#011C40] dark:text-white focus:outline-none focus:ring-1 focus:ring-[#54ACBF]"
                 />
-                <Button size="sm" variant="secondary" onClick={() => handleAddLabel()}>
+                <Button size="sm" variant="primary" onClick={() => handleAddLabel()}>
                   Add
                 </Button>
                 <button
                   type="button"
                   onClick={() => setShowLabelInput(false)}
-                  className="text-neutral-400 hover:text-neutral-600"
+                  className="text-slate-400 hover:text-slate-600 dark:hover:text-white cursor-pointer"
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
               </div>
             )}
 
-            {/* Action buttons & Close */}
-            <div className="flex items-center justify-between pt-2 border-t border-black/5 dark:border-white/5">
+            {/* Action buttons & Close (Luna Primary Dark Blue) */}
+            <div className="flex items-center justify-between pt-2.5 border-t border-black/5 dark:border-white/10">
               <div className="flex items-center gap-1">
                 <ColorPicker currentColor={color} onSelectColor={setColor} />
 
@@ -291,8 +293,8 @@ export function CreateNoteBar() {
                   className={cn(
                     'p-1.5 rounded-full transition-colors cursor-pointer',
                     isChecklistMode
-                      ? 'text-amber-600 dark:text-amber-400 bg-amber-100 dark:bg-amber-950/80'
-                      : 'text-neutral-600 dark:text-neutral-300 hover:bg-neutral-200/60 dark:hover:bg-neutral-700/60'
+                      ? 'text-[#011C40] dark:text-[#011C40] bg-[#A7EBF2]'
+                      : 'text-slate-600 dark:text-[#A7EBF2]/80 hover:bg-[#A7EBF2]/20 dark:hover:bg-[#26658C]/50'
                   )}
                   title="Checklist toggle"
                 >
@@ -302,18 +304,18 @@ export function CreateNoteBar() {
                 <button
                   type="button"
                   onClick={() => setShowLabelInput((prev) => !prev)}
-                  className="p-1.5 rounded-full text-neutral-600 dark:text-neutral-300 hover:bg-neutral-200/60 dark:hover:bg-neutral-700/60 transition-colors cursor-pointer"
-                  title="Add label"
+                  className="p-1.5 rounded-full text-slate-600 dark:text-[#A7EBF2]/80 hover:bg-[#A7EBF2]/20 dark:hover:bg-[#26658C]/50 transition-colors cursor-pointer"
+                  title="Add tag"
                 >
                   <Tag className="w-4 h-4" />
                 </button>
               </div>
 
               <Button
-                variant="ghost"
+                variant="primary"
                 size="sm"
                 onClick={handleSaveAndClose}
-                className="text-neutral-700 dark:text-neutral-200 font-medium px-4"
+                className="px-5 font-semibold text-xs"
               >
                 Close
               </Button>
