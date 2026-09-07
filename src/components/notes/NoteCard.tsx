@@ -8,6 +8,7 @@ import {
   Trash2,
   RotateCcw,
   Tag,
+  X,
 } from 'lucide-react';
 import { Note } from '@/types/note';
 import { NOTE_COLORS } from '@/lib/constants';
@@ -167,27 +168,40 @@ export function NoteCard({ note, isTrashView = false }: NoteCardProps) {
           </div>
         )}
 
-        {/* Add Tag inline form */}
+        {/* Add Tag inline form - strictly contained inside card boundaries */}
         {showTagInput && !isTrashView && (
           <div
             onClick={(e) => e.stopPropagation()}
-            className="flex items-center gap-1.5 mb-2.5 animate-in fade-in duration-100"
+            className="flex items-center gap-1.5 w-full max-w-full mb-2.5 animate-in fade-in duration-100"
           >
-            <input
-              type="text"
-              value={tagInputValue}
-              onChange={(e) => setTagInputValue(e.target.value)}
-              onKeyDown={handleAddTag}
-              placeholder="Tag name..."
-              autoFocus
-              className="px-2.5 py-1 text-xs rounded-lg bg-white dark:bg-[#011C40] border border-[#A7EBF2] dark:border-[#26658C] text-[#011C40] dark:text-white focus:outline-none"
-            />
+            <div className="relative flex-1 min-w-0 flex items-center">
+              <input
+                type="text"
+                value={tagInputValue}
+                onChange={(e) => setTagInputValue(e.target.value)}
+                onKeyDown={handleAddTag}
+                placeholder="Tag name..."
+                autoFocus
+                className="w-full min-w-0 pl-2.5 pr-2 py-1 text-xs rounded-lg bg-white/90 dark:bg-[#011C40]/90 border border-[#A7EBF2] dark:border-[#26658C] text-[#011C40] dark:text-white focus:outline-none focus:ring-1 focus:ring-[#54ACBF]"
+              />
+            </div>
             <button
               type="button"
               onClick={() => handleAddTag()}
-              className="text-xs px-2.5 py-1 bg-[#023859] hover:bg-[#26658C] text-white rounded-lg font-medium cursor-pointer"
+              className="shrink-0 text-xs px-2.5 py-1 bg-[#023859] hover:bg-[#26658C] text-white rounded-lg font-medium cursor-pointer transition-colors shadow-xs"
             >
               Add
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setShowTagInput(false);
+                setTagInputValue('');
+              }}
+              className="shrink-0 p-1 rounded-md text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors"
+              title="Cancel"
+            >
+              <X className="w-3.5 h-3.5" />
             </button>
           </div>
         )}

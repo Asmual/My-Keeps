@@ -257,9 +257,9 @@ export function CreateNoteBar() {
               </div>
             )}
 
-            {/* Label input field */}
+            {/* Label input field - strictly contained within note bar */}
             {showLabelInput && (
-              <div className="flex items-center gap-2 pt-1">
+              <div className="flex items-center gap-2 w-full max-w-full pt-1">
                 <input
                   type="text"
                   value={newLabelInput}
@@ -267,15 +267,19 @@ export function CreateNoteBar() {
                   onKeyDown={handleAddLabel}
                   placeholder="Enter tag name & press Enter..."
                   autoFocus
-                  className="px-2.5 py-1 text-xs rounded-lg bg-slate-100 dark:bg-[#011C40] border border-slate-200 dark:border-[#26658C] text-[#011C40] dark:text-white focus:outline-none focus:ring-1 focus:ring-[#54ACBF]"
+                  className="flex-1 min-w-0 px-3 py-1.5 text-xs rounded-xl bg-slate-100 dark:bg-[#011C40] border border-slate-200 dark:border-[#26658C] text-[#011C40] dark:text-white focus:outline-none focus:ring-1 focus:ring-[#54ACBF]"
                 />
-                <Button size="sm" variant="primary" onClick={() => handleAddLabel()}>
+                <Button size="sm" variant="primary" onClick={() => handleAddLabel()} className="shrink-0">
                   Add
                 </Button>
                 <button
                   type="button"
-                  onClick={() => setShowLabelInput(false)}
-                  className="text-slate-400 hover:text-slate-600 dark:hover:text-white cursor-pointer"
+                  onClick={() => {
+                    setShowLabelInput(false);
+                    setNewLabelInput('');
+                  }}
+                  className="shrink-0 p-1 text-slate-400 hover:text-slate-600 dark:hover:text-white cursor-pointer"
+                  title="Cancel"
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
