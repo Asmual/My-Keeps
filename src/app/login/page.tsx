@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import { Mail, Lock, Eye, EyeOff, ArrowLeft, Loader2 } from 'lucide-react';
 import { signIn } from '@/lib/auth-client';
 import { Button } from '@/components/ui/Button';
+import { GoogleAuthButton } from '@/components/auth/GoogleAuthButton';
 import toast from 'react-hot-toast';
 
 export default function LoginPage() {
@@ -93,6 +94,22 @@ export default function LoginPage() {
             {errorMessage}
           </div>
         )}
+
+        {/* Google One-Click Sign In */}
+        <div className="mb-5">
+          <GoogleAuthButton text="Continue with Google" onError={(msg) => setErrorMessage(msg)} />
+
+          <div className="relative my-5">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-slate-200 dark:border-[#26658C]/60" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-white dark:bg-[#023859] px-3 text-slate-400 dark:text-[#A7EBF2]/60 font-medium">
+                Or continue with email
+              </span>
+            </div>
+          </div>
+        </div>
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
