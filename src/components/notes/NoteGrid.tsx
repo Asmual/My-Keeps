@@ -17,7 +17,27 @@ export function NoteGrid({
   isTrashView = false,
   emptyType = 'notes',
 }: NoteGridProps) {
-  const { viewMode, searchQuery, selectedLabel } = useNotes();
+  const { viewMode, searchQuery, selectedLabel, isLoading } = useNotes();
+
+  if (isLoading) {
+    return (
+      <div className="w-full grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5 pb-16">
+        {[1, 2, 3, 4, 5, 6].map((i) => (
+          <div
+            key={i}
+            className="rounded-2xl p-5 border border-[#A7EBF2]/40 dark:border-[#26658C]/60 bg-white/50 dark:bg-[#023859]/50 animate-pulse space-y-3 h-36"
+          >
+            <div className="h-4 bg-slate-200 dark:bg-[#26658C]/60 rounded-md w-3/5" />
+            <div className="h-3 bg-slate-200 dark:bg-[#26658C]/40 rounded-md w-full" />
+            <div className="h-3 bg-slate-200 dark:bg-[#26658C]/40 rounded-md w-4/5" />
+            <div className="pt-2 flex gap-1.5">
+              <div className="h-4 w-12 bg-slate-200 dark:bg-[#26658C]/50 rounded-full" />
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
 
   // Filter notes by search query and selected label
   const filteredNotes = notes.filter((note) => {

@@ -8,17 +8,20 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const db = await connectToDatabase();
-    if (!db) {
-      return NextResponse.json({ success: false, error: 'Database not connected' }, { status: 503 });
-    }
+    await connectToDatabase();
 
-    const note = await NoteModel.findById(id);
+    const note = await NoteModel.findById(id).lean();
     if (!note) {
       return NextResponse.json({ success: false, error: 'Note not found' }, { status: 404 });
     }
 
-    return NextResponse.json({ success: true, data: note });
+    const { _id, ...rest } = (note as unknown) as Record<string, unknown>;
+    delete rest.__v;
+
+    return NextResponse.json({
+      success: true,
+      data: { ...rest, id: String(_id) },
+    });
   } catch (error) {
     return NextResponse.json(
       { success: false, error: (error as Error).message },
@@ -34,21 +37,24 @@ export async function PATCH(
   try {
     const { id } = await params;
     const body = await request.json();
-    const db = await connectToDatabase();
-    if (!db) {
-      return NextResponse.json({
-        success: true,
-        message: 'Mock update successful',
-        data: { _id: id, ...body },
-      });
-    }
+    await connectToDatabase();
 
-    const updatedNote = await NoteModel.findByIdAndUpdate(id, body, { new: true });
+    const updatedNote = await NoteModel.findByIdAndUpdate(id, body, {
+      new: true,
+      runValidators: true,
+    }).lean();
+
     if (!updatedNote) {
       return NextResponse.json({ success: false, error: 'Note not found' }, { status: 404 });
     }
 
-    return NextResponse.json({ success: true, data: updatedNote });
+    const { _id, ...rest } = (updatedNote as unknown) as Record<string, unknown>;
+    delete rest.__v;
+
+    return NextResponse.json({
+      success: true,
+      data: { ...rest, id: String(_id) },
+    });
   } catch (error) {
     return NextResponse.json(
       { success: false, error: (error as Error).message },
@@ -63,17 +69,17 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
-    const db = await connectToDatabase();
-    if (!db) {
-      return NextResponse.json({ success: true, message: 'Mock delete successful' });
-    }
+    await connectToDatabase();
 
     const deleted = await NoteModel.findByIdAndDelete(id);
     if (!deleted) {
       return NextResponse.json({ success: false, error: 'Note not found' }, { status: 404 });
     }
 
-    return NextResponse.json({ success: true, message: 'Note permanently deleted' });
+    return NextResponse.json({
+      success: true,
+      message: 'Note permanently deleted from MongoDB',
+    });
   } catch (error) {
     return NextResponse.json(
       { success: false, error: (error as Error).message },

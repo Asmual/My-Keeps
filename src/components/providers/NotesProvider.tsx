@@ -3,13 +3,13 @@
 import React, { createContext, useContext, useEffect, useState, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Note, NoteColorId, ViewMode } from '@/types/note';
-import { INITIAL_NOTES } from '@/lib/constants';
-import { generateId } from '@/lib/utils';
 import { useSession } from '@/lib/auth-client';
 import toast from 'react-hot-toast';
 
 interface NotesContextType {
   notes: Note[];
+  isLoading: boolean;
+  refreshNotes: () => Promise<void>;
   searchQuery: string;
   setSearchQuery: (query: string) => void;
   viewMode: ViewMode;
@@ -31,18 +31,18 @@ interface NotesContextType {
   isAuthenticated: boolean;
   currentUser: { id: string; email: string; name?: string } | null;
   requireAuth: (actionName?: string) => boolean;
-  createNote: (noteData: Partial<Note>) => Note | null;
-  updateNote: (id: string, updates: Partial<Note>) => void;
-  togglePin: (id: string) => void;
-  archiveNote: (id: string) => void;
-  unarchiveNote: (id: string) => void;
-  trashNote: (id: string) => void;
-  restoreNote: (id: string) => void;
-  deletePermanently: (id: string) => void;
-  emptyTrash: () => void;
-  changeColor: (id: string, color: NoteColorId) => void;
-  addLabel: (id: string, label: string) => void;
-  removeLabel: (id: string, label: string) => void;
+  createNote: (noteData: Partial<Note>) => Promise<Note | null>;
+  updateNote: (id: string, updates: Partial<Note>) => Promise<void>;
+  togglePin: (id: string) => Promise<void>;
+  archiveNote: (id: string) => Promise<void>;
+  unarchiveNote: (id: string) => Promise<void>;
+  trashNote: (id: string) => Promise<void>;
+  restoreNote: (id: string) => Promise<void>;
+  deletePermanently: (id: string) => Promise<void>;
+  emptyTrash: () => Promise<void>;
+  changeColor: (id: string, color: NoteColorId) => Promise<void>;
+  addLabel: (id: string, label: string) => Promise<void>;
+  removeLabel: (id: string, label: string) => Promise<void>;
 }
 
 const NotesContext = createContext<NotesContextType | undefined>(undefined);
@@ -51,17 +51,9 @@ export function NotesProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const { data: session } = useSession();
 
-  const [notes, setNotes] = useState<Note[]>(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const saved = localStorage.getItem('mykeeps-notes');
-        if (saved) return JSON.parse(saved);
-      } catch (e) {
-        console.error('Failed to parse notes from storage:', e);
-      }
-    }
-    return INITIAL_NOTES;
-  });
+  // Completely dynamic: starts with empty array and loads from MongoDB
+  const [notes, setNotes] = useState<Note[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
@@ -69,6 +61,7 @@ export function NotesProvider({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [activeEditNote, setActiveEditNoteState] = useState<Note | null>(null);
 
+  const userId = session?.user?.id;
   const isAuthenticated = Boolean(session?.user);
   const currentUser = session?.user
     ? {
@@ -94,16 +87,72 @@ export function NotesProvider({ children }: { children: React.ReactNode }) {
     [session, router]
   );
 
-  // Save to LocalStorage on modification
-  useEffect(() => {
+  // Fetch real data directly from MongoDB via API (used for manual refresh)
+  const fetchNotes = useCallback(async () => {
+    setIsLoading(true);
     try {
-      localStorage.setItem('mykeeps-notes', JSON.stringify(notes));
-    } catch (e) {
-      console.error('Failed to save notes to storage:', e);
-    }
-  }, [notes]);
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('mykeeps-notes');
+      }
 
-  // Extract all unique labels
+      const params = new URLSearchParams({ filter: 'all' });
+      if (userId) {
+        params.set('userId', userId);
+      }
+
+      const res = await fetch(`/api/notes?${params.toString()}`);
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && Array.isArray(json.data)) {
+          setNotes(json.data);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to fetch notes from MongoDB:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [userId]);
+
+  // Initial load from MongoDB on mount or user change
+  useEffect(() => {
+    let ignore = false;
+
+    async function loadInitialNotes() {
+      try {
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('mykeeps-notes');
+        }
+
+        const params = new URLSearchParams({ filter: 'all' });
+        if (userId) {
+          params.set('userId', userId);
+        }
+
+        const res = await fetch(`/api/notes?${params.toString()}`);
+        if (res.ok) {
+          const json = await res.json();
+          if (!ignore && json.success && Array.isArray(json.data)) {
+            setNotes(json.data);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load notes from MongoDB:', err);
+      } finally {
+        if (!ignore) {
+          setIsLoading(false);
+        }
+      }
+    }
+
+    loadInitialNotes();
+
+    return () => {
+      ignore = true;
+    };
+  }, [userId]);
+
+  // Extract all unique labels dynamically from active notes
   const allLabels = useMemo(() => {
     const labelSet = new Set<string>();
     notes.forEach((n) => {
@@ -133,32 +182,41 @@ export function NotesProvider({ children }: { children: React.ReactNode }) {
     setActiveEditNoteState(note);
   };
 
-  const createNote = (noteData: Partial<Note>): Note | null => {
+  // CREATE Note in MongoDB
+  const createNote = async (noteData: Partial<Note>): Promise<Note | null> => {
     if (!requireAuth('create notes')) return null;
 
-    const newNote: Note = {
-      id: generateId(),
-      title: noteData.title || '',
-      content: noteData.content || '',
-      color: noteData.color || 'default',
-      isPinned: !!noteData.isPinned,
-      isArchived: false,
-      isTrashed: false,
-      labels: noteData.labels || [],
-      checklist: noteData.checklist,
-      reminder: noteData.reminder || null,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
+    try {
+      const res = await fetch('/api/notes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...noteData,
+          userId: userId || null,
+        }),
+      });
 
-    setNotes((prev) => [newNote, ...prev]);
-    toast.success('Note added');
-    return newNote;
+      const json = await res.json();
+      if (json.success && json.data) {
+        const createdNote: Note = json.data;
+        setNotes((prev) => [createdNote, ...prev]);
+        toast.success('Note saved to MongoDB');
+        return createdNote;
+      } else {
+        toast.error('Failed to save note');
+      }
+    } catch (err) {
+      console.error('Error creating note in MongoDB:', err);
+      toast.error('Failed to connect to MongoDB');
+    }
+    return null;
   };
 
-  const updateNote = (id: string, updates: Partial<Note>) => {
+  // UPDATE Note in MongoDB
+  const updateNote = async (id: string, updates: Partial<Note>): Promise<void> => {
     if (!requireAuth('update notes')) return;
 
+    // Optimistic UI update
     setNotes((prev) =>
       prev.map((n) =>
         n.id === id
@@ -169,151 +227,143 @@ export function NotesProvider({ children }: { children: React.ReactNode }) {
     if (activeEditNote && activeEditNote.id === id) {
       setActiveEditNoteState((prev) => (prev ? { ...prev, ...updates } : null));
     }
+
+    try {
+      await fetch(`/api/notes/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates),
+      });
+    } catch (err) {
+      console.error('Error updating note in MongoDB:', err);
+    }
   };
 
-  const togglePin = (id: string) => {
+  // PIN / UNPIN
+  const togglePin = async (id: string): Promise<void> => {
     if (!requireAuth('pin notes')) return;
 
-    setNotes((prev) =>
-      prev.map((n) => {
-        if (n.id === id) {
-          const nextPinned = !n.isPinned;
-          toast(nextPinned ? 'Note pinned' : 'Note unpinned', {
-            icon: nextPinned ? '📌' : '📍',
-          });
-          return { ...n, isPinned: nextPinned, updatedAt: new Date().toISOString() };
-        }
-        return n;
-      })
-    );
+    const note = notes.find((n) => n.id === id);
+    if (!note) return;
+
+    const nextPinned = !note.isPinned;
+    toast(nextPinned ? 'Note pinned' : 'Note unpinned', {
+      icon: nextPinned ? '📌' : '📍',
+    });
+
+    await updateNote(id, { isPinned: nextPinned });
   };
 
-  const archiveNote = (id: string) => {
+  // ARCHIVE
+  const archiveNote = async (id: string): Promise<void> => {
     if (!requireAuth('archive notes')) return;
 
-    setNotes((prev) =>
-      prev.map((n) =>
-        n.id === id
-          ? {
-              ...n,
-              isArchived: true,
-              isPinned: false,
-              updatedAt: new Date().toISOString(),
-            }
-          : n
-      )
-    );
     toast('Note archived', { icon: '📦' });
     if (activeEditNote?.id === id) setActiveEditNoteState(null);
+
+    await updateNote(id, { isArchived: true, isPinned: false });
   };
 
-  const unarchiveNote = (id: string) => {
+  // UNARCHIVE
+  const unarchiveNote = async (id: string): Promise<void> => {
     if (!requireAuth('unarchive notes')) return;
 
-    setNotes((prev) =>
-      prev.map((n) =>
-        n.id === id
-          ? { ...n, isArchived: false, updatedAt: new Date().toISOString() }
-          : n
-      )
-    );
     toast('Note unarchived', { icon: '📂' });
+    await updateNote(id, { isArchived: false });
   };
 
-  const trashNote = (id: string) => {
+  // TRASH
+  const trashNote = async (id: string): Promise<void> => {
     if (!requireAuth('delete notes')) return;
 
-    setNotes((prev) =>
-      prev.map((n) =>
-        n.id === id
-          ? {
-              ...n,
-              isTrashed: true,
-              isPinned: false,
-              updatedAt: new Date().toISOString(),
-            }
-          : n
-      )
-    );
     toast('Note moved to trash', { icon: '🗑️' });
     if (activeEditNote?.id === id) setActiveEditNoteState(null);
+
+    await updateNote(id, { isTrashed: true, isPinned: false });
   };
 
-  const restoreNote = (id: string) => {
+  // RESTORE
+  const restoreNote = async (id: string): Promise<void> => {
     if (!requireAuth('restore notes')) return;
 
-    setNotes((prev) =>
-      prev.map((n) =>
-        n.id === id
-          ? { ...n, isTrashed: false, updatedAt: new Date().toISOString() }
-          : n
-      )
-    );
     toast.success('Note restored');
+    await updateNote(id, { isTrashed: false });
   };
 
-  const deletePermanently = (id: string) => {
+  // DELETE PERMANENTLY from MongoDB
+  const deletePermanently = async (id: string): Promise<void> => {
     if (!requireAuth('permanently delete notes')) return;
 
+    // Optimistic removal
     setNotes((prev) => prev.filter((n) => n.id !== id));
-    toast.error('Note deleted forever');
+    toast.error('Note deleted permanently');
     if (activeEditNote?.id === id) setActiveEditNoteState(null);
+
+    try {
+      await fetch(`/api/notes/${id}`, { method: 'DELETE' });
+    } catch (err) {
+      console.error('Error deleting note from MongoDB:', err);
+    }
   };
 
-  const emptyTrash = () => {
+  // EMPTY TRASH in MongoDB
+  const emptyTrash = async (): Promise<void> => {
     if (!requireAuth('empty trash')) return;
 
     setNotes((prev) => prev.filter((n) => !n.isTrashed));
     toast.success('Trash emptied');
+
+    try {
+      const params = new URLSearchParams({ action: 'empty-trash' });
+      if (userId) {
+        params.set('userId', userId);
+      }
+      await fetch(`/api/notes?${params.toString()}`, { method: 'DELETE' });
+    } catch (err) {
+      console.error('Error emptying trash in MongoDB:', err);
+    }
   };
 
-  const changeColor = (id: string, color: NoteColorId) => {
+  // CHANGE COLOR
+  const changeColor = async (id: string, color: NoteColorId): Promise<void> => {
     if (!requireAuth('change color')) return;
-    updateNote(id, { color });
+    await updateNote(id, { color });
   };
 
-  const addLabel = (id: string, label: string) => {
+  // ADD LABEL
+  const addLabel = async (id: string, label: string): Promise<void> => {
     if (!requireAuth('add tags')) return;
 
     const trimmed = label.trim();
     if (!trimmed) return;
-    setNotes((prev) =>
-      prev.map((n) => {
-        if (n.id === id) {
-          const currentLabels = n.labels || [];
-          if (currentLabels.includes(trimmed)) return n;
-          return {
-            ...n,
-            labels: [...currentLabels, trimmed],
-            updatedAt: new Date().toISOString(),
-          };
-        }
-        return n;
-      })
-    );
+
+    const targetNote = notes.find((n) => n.id === id);
+    if (!targetNote) return;
+
+    const currentLabels = targetNote.labels || [];
+    if (currentLabels.includes(trimmed)) return;
+
+    const updatedLabels = [...currentLabels, trimmed];
+    await updateNote(id, { labels: updatedLabels });
   };
 
-  const removeLabel = (id: string, label: string) => {
+  // REMOVE LABEL
+  const removeLabel = async (id: string, label: string): Promise<void> => {
     if (!requireAuth('remove tags')) return;
 
-    setNotes((prev) =>
-      prev.map((n) => {
-        if (n.id === id) {
-          return {
-            ...n,
-            labels: (n.labels || []).filter((l) => l !== label),
-            updatedAt: new Date().toISOString(),
-          };
-        }
-        return n;
-      })
-    );
+    const targetNote = notes.find((n) => n.id === id);
+    if (!targetNote) return;
+
+    const updatedLabels = (targetNote.labels || []).filter((l) => l !== label);
+    await updateNote(id, { labels: updatedLabels });
   };
 
   return (
     <NotesContext.Provider
       value={{
         notes,
+        isLoading,
+        refreshNotes: fetchNotes,
         searchQuery,
         setSearchQuery,
         viewMode,

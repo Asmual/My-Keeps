@@ -15,7 +15,7 @@ export interface INoteDocument extends Document {
     completed: boolean;
   }[];
   reminder?: Date | null;
-  userId?: string;
+  userId?: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -60,6 +60,16 @@ const NoteSchema = new Schema<INoteDocument>(
   },
   {
     timestamps: true,
+    toJSON: {
+      virtuals: true,
+      transform: (_doc, ret: Record<string, unknown>) => {
+        if (ret._id) {
+          ret.id = String(ret._id);
+        }
+        delete ret.__v;
+        return ret;
+      },
+    },
   }
 );
 
