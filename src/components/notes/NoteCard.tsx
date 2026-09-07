@@ -9,13 +9,15 @@ import {
   RotateCcw,
   Tag,
   X,
+  Bell,
 } from 'lucide-react';
 import { Note } from '@/types/note';
 import { NOTE_COLORS } from '@/lib/constants';
 import { useNotes } from '@/hooks/useNotes';
 import { ColorPicker } from './ColorPicker';
+import { ReminderPicker } from './ReminderPicker';
 import { Badge } from '@/components/ui/Badge';
-import { cn, formatDate } from '@/lib/utils';
+import { cn, formatDate, formatReminderDate } from '@/lib/utils';
 
 interface NoteCardProps {
   note: Note;
@@ -36,6 +38,7 @@ export function NoteCard({ note, isTrashView = false }: NoteCardProps) {
     setActiveEditNote,
     updateNote,
     requireAuth,
+    setReminder,
   } = useNotes();
 
   const [showTagInput, setShowTagInput] = useState(false);
@@ -152,6 +155,32 @@ export function NoteCard({ note, isTrashView = false }: NoteCardProps) {
           </div>
         )}
 
+        {/* Reminder Badge */}
+        {note.reminder && (
+          <div className="flex flex-wrap gap-1.5 mb-2.5">
+            <span
+              onClick={(e) => e.stopPropagation()}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-[#54ACBF]/15 dark:bg-[#54ACBF]/25 text-[#011C40] dark:text-[#A7EBF2] border border-[#54ACBF]/40 shadow-xs"
+            >
+              <Bell className="w-3 h-3 text-[#54ACBF] shrink-0" />
+              <span className="truncate max-w-[170px]">{formatReminderDate(note.reminder)}</span>
+              {!isTrashView && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setReminder(note.id, null);
+                  }}
+                  className="ml-0.5 p-0.5 rounded-full hover:bg-black/10 dark:hover:bg-white/10 text-slate-500 dark:text-slate-300 hover:text-rose-500 dark:hover:text-rose-400 cursor-pointer transition-colors"
+                  title="Remove reminder"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              )}
+            </span>
+          </div>
+        )}
+
         {/* Labels / Tags (Soft Ice Blue with dark text) */}
         {note.labels && note.labels.length > 0 && (
           <div className="flex flex-wrap gap-1.5 mb-2.5">
@@ -219,6 +248,11 @@ export function NoteCard({ note, isTrashView = false }: NoteCardProps) {
             onClick={(e) => e.stopPropagation()}
             className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150"
           >
+            <ReminderPicker
+              currentReminder={note.reminder}
+              onSelectReminder={(date) => setReminder(note.id, date)}
+            />
+
             <ColorPicker
               currentColor={note.color}
               onSelectColor={(col) => changeColor(note.id, col)}

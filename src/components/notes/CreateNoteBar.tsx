@@ -7,12 +7,14 @@ import {
   Plus,
   X,
   Tag,
+  Bell,
 } from 'lucide-react';
 import { useNotes } from '@/hooks/useNotes';
 import { ColorPicker } from './ColorPicker';
+import { ReminderPicker } from './ReminderPicker';
 import { NOTE_COLORS } from '@/lib/constants';
 import { NoteColorId, CheckItem } from '@/types/note';
-import { cn, generateId } from '@/lib/utils';
+import { cn, generateId, formatReminderDate } from '@/lib/utils';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 
@@ -23,6 +25,7 @@ export function CreateNoteBar() {
   const [content, setContent] = useState('');
   const [isPinned, setIsPinned] = useState(false);
   const [color, setColor] = useState<NoteColorId>('default');
+  const [reminder, setReminder] = useState<string | null>(null);
   const [labels, setLabels] = useState<string[]>([]);
   const [newLabelInput, setNewLabelInput] = useState('');
   const [showLabelInput, setShowLabelInput] = useState(false);
@@ -42,7 +45,7 @@ export function CreateNoteBar() {
   }, [content]);
 
   const handleSaveAndClose = React.useCallback(() => {
-    const hasContent = title.trim() || content.trim() || checklist.length > 0;
+    const hasContent = title.trim() || content.trim() || checklist.length > 0 || reminder;
     if (hasContent) {
       createNote({
         title: title.trim(),
@@ -50,6 +53,7 @@ export function CreateNoteBar() {
         color,
         isPinned,
         labels,
+        reminder: reminder || undefined,
         checklist: isChecklistMode && checklist.length > 0 ? checklist : undefined,
       });
     }
@@ -58,6 +62,7 @@ export function CreateNoteBar() {
     setContent('');
     setIsPinned(false);
     setColor('default');
+    setReminder(null);
     setLabels([]);
     setChecklist([]);
     setIsChecklistMode(false);
@@ -67,6 +72,7 @@ export function CreateNoteBar() {
     title,
     content,
     checklist,
+    reminder,
     createNote,
     color,
     isPinned,
@@ -243,6 +249,24 @@ export function CreateNoteBar() {
               </div>
             )}
 
+            {/* Reminder preview */}
+            {reminder && (
+              <div className="flex flex-wrap gap-1.5 pt-1">
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-[#54ACBF]/15 dark:bg-[#54ACBF]/25 text-[#011C40] dark:text-[#A7EBF2] border border-[#54ACBF]/40 shadow-xs">
+                  <Bell className="w-3 h-3 text-[#54ACBF] shrink-0" />
+                  <span className="truncate max-w-[200px]">{formatReminderDate(reminder)}</span>
+                  <button
+                    type="button"
+                    onClick={() => setReminder(null)}
+                    className="ml-0.5 p-0.5 rounded-full hover:bg-black/10 dark:hover:bg-white/10 text-slate-500 hover:text-rose-500 cursor-pointer transition-colors"
+                    title="Remove reminder"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </span>
+              </div>
+            )}
+
             {/* Labels preview */}
             {labels.length > 0 && (
               <div className="flex flex-wrap gap-1.5 pt-1">
@@ -289,6 +313,11 @@ export function CreateNoteBar() {
             {/* Action buttons & Close (Luna Primary Dark Blue) */}
             <div className="flex items-center justify-between pt-2.5 border-t border-black/5 dark:border-white/10">
               <div className="flex items-center gap-1">
+                <ReminderPicker
+                  currentReminder={reminder}
+                  onSelectReminder={setReminder}
+                />
+
                 <ColorPicker currentColor={color} onSelectColor={setColor} />
 
                 <button

@@ -9,13 +9,15 @@ import {
   X,
   Plus,
   Tag,
+  Bell,
 } from 'lucide-react';
 import { useNotes } from '@/hooks/useNotes';
 import { NOTE_COLORS } from '@/lib/constants';
 import { ColorPicker } from './ColorPicker';
+import { ReminderPicker } from './ReminderPicker';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
-import { cn, generateId } from '@/lib/utils';
+import { cn, generateId, formatReminderDate } from '@/lib/utils';
 import { CheckItem, Note, NoteColorId } from '@/types/note';
 
 interface NoteEditModalContentProps {
@@ -30,6 +32,7 @@ function NoteEditModalContent({ note, onClose }: NoteEditModalContentProps) {
   const [content, setContent] = useState(note.content || '');
   const [color, setColor] = useState<NoteColorId>(note.color || 'default');
   const [isPinned, setIsPinned] = useState(note.isPinned || false);
+  const [reminder, setReminder] = useState<string | null>(note.reminder || null);
   const [labels, setLabels] = useState<string[]>(note.labels || []);
   const [checklist, setChecklist] = useState<CheckItem[]>(note.checklist || []);
   const [newCheckItem, setNewCheckItem] = useState('');
@@ -43,10 +46,11 @@ function NoteEditModalContent({ note, onClose }: NoteEditModalContentProps) {
       color,
       isPinned,
       labels,
+      reminder,
       checklist: checklist.length > 0 ? checklist : undefined,
     });
     onClose();
-  }, [note.id, title, content, color, isPinned, labels, checklist, updateNote, onClose]);
+  }, [note.id, title, content, color, isPinned, labels, reminder, checklist, updateNote, onClose]);
 
   // Handle ESC key
   useEffect(() => {
@@ -182,6 +186,24 @@ function NoteEditModalContent({ note, onClose }: NoteEditModalContentProps) {
           </div>
         )}
 
+        {/* Reminder preview */}
+        {reminder && (
+          <div className="flex flex-wrap gap-1.5 mb-3">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-[#54ACBF]/15 dark:bg-[#54ACBF]/25 text-[#011C40] dark:text-[#A7EBF2] border border-[#54ACBF]/40 shadow-xs">
+              <Bell className="w-3.5 h-3.5 text-[#54ACBF] shrink-0" />
+              <span>{formatReminderDate(reminder)}</span>
+              <button
+                type="button"
+                onClick={() => setReminder(null)}
+                className="ml-1 p-0.5 rounded-full hover:bg-black/10 dark:hover:bg-white/10 text-slate-500 hover:text-rose-500 cursor-pointer transition-colors"
+                title="Remove reminder"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </span>
+          </div>
+        )}
+
         {/* Labels list */}
         {labels.length > 0 && (
           <div className="flex flex-wrap gap-1.5 mb-4">
@@ -228,6 +250,11 @@ function NoteEditModalContent({ note, onClose }: NoteEditModalContentProps) {
         {/* Footer toolbar (Luna palette) */}
         <div className="flex items-center justify-between pt-4 border-t border-black/5 dark:border-white/10">
           <div className="flex items-center gap-1.5">
+            <ReminderPicker
+              currentReminder={reminder}
+              onSelectReminder={setReminder}
+            />
+
             <ColorPicker currentColor={color} onSelectColor={setColor} />
 
             <button

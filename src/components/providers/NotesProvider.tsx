@@ -27,6 +27,7 @@ interface NotesContextType {
     active: number;
     archive: number;
     trash: number;
+    reminders: number;
   };
   isAuthenticated: boolean;
   currentUser: { id: string; email: string; name?: string } | null;
@@ -43,6 +44,7 @@ interface NotesContextType {
   changeColor: (id: string, color: NoteColorId) => Promise<void>;
   addLabel: (id: string, label: string) => Promise<void>;
   removeLabel: (id: string, label: string) => Promise<void>;
+  setReminder: (id: string, date: string | null) => Promise<void>;
 }
 
 const NotesContext = createContext<NotesContextType | undefined>(undefined);
@@ -167,6 +169,7 @@ export function NotesProvider({ children }: { children: React.ReactNode }) {
       active: notes.filter((n) => !n.isArchived && !n.isTrashed).length,
       archive: notes.filter((n) => n.isArchived && !n.isTrashed).length,
       trash: notes.filter((n) => n.isTrashed).length,
+      reminders: notes.filter((n) => !n.isArchived && !n.isTrashed && Boolean(n.reminder)).length,
     };
   }, [notes]);
 
@@ -358,6 +361,17 @@ export function NotesProvider({ children }: { children: React.ReactNode }) {
     await updateNote(id, { labels: updatedLabels });
   };
 
+  // SET / REMOVE REMINDER
+  const setReminder = async (id: string, date: string | null): Promise<void> => {
+    if (!requireAuth('set reminders')) return;
+    await updateNote(id, { reminder: date });
+    if (date) {
+      toast.success('Reminder saved');
+    } else {
+      toast('Reminder removed');
+    }
+  };
+
   return (
     <NotesContext.Provider
       value={{
@@ -393,6 +407,7 @@ export function NotesProvider({ children }: { children: React.ReactNode }) {
         changeColor,
         addLabel,
         removeLabel,
+        setReminder,
       }}
     >
       {children}
