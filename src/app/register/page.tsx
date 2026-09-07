@@ -1,9 +1,10 @@
 'use client';
 
 import React, { useState } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Sparkles, Mail, Lock, User, Eye, EyeOff, ArrowLeft, Loader2 } from 'lucide-react';
+import { Mail, Lock, User, Eye, EyeOff, ArrowLeft, Loader2 } from 'lucide-react';
 import { signUp } from '@/lib/auth-client';
 import { Button } from '@/components/ui/Button';
 import toast from 'react-hot-toast';
@@ -81,11 +82,18 @@ export default function RegisterPage() {
       <div className="w-full max-w-md bg-white dark:bg-[#023859] border border-[#A7EBF2] dark:border-[#26658C] rounded-3xl p-6 sm:p-8 shadow-xl shadow-slate-200/50 dark:shadow-none transition-all">
         {/* Header */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-gradient-to-tr from-[#023859] via-[#26658C] to-[#54ACBF] text-white shadow-md shadow-[#54ACBF]/20 mb-3">
-            <Sparkles className="w-6 h-6" />
+          <div className="inline-flex items-center justify-center mb-3">
+            <Image
+              src="/images/logo.png"
+              alt="My Keeps Logo"
+              width={56}
+              height={56}
+              className="w-14 h-14 rounded-full object-contain shadow-md shadow-slate-900/20 hover:scale-105 transition-transform"
+              priority
+            />
           </div>
           <h1 className="text-2xl font-bold tracking-tight text-[#011C40] dark:text-white">
-            Join Luna Keeps
+            Join My Keeps
           </h1>
           <p className="text-sm text-slate-500 dark:text-[#A7EBF2]/70 mt-1">
             Start organizing your thoughts and tasks cleanly

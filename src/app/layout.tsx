@@ -20,7 +20,8 @@ export const metadata: Metadata = {
   title: 'My Keeps - Clean Note-Taking & Organization',
   description: 'Minimalist note-taking workspace inspired by Google Keep',
   icons: {
-    icon: '/favicon.ico',
+    icon: '/images/logo.png',
+    apple: '/images/logo.png',
   },
 };
 

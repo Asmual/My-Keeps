@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
@@ -11,7 +12,6 @@ import {
   List,
   Sun,
   Moon,
-  Sparkles,
   LogOut,
   User as UserIcon,
 } from 'lucide-react';
@@ -81,10 +81,15 @@ export function Header() {
           <Menu className="w-5 h-5" />
         </Button>
 
-        <Link href="/" className="flex items-center gap-2 select-none group">
-          <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-gradient-to-tr from-[#023859] via-[#26658C] to-[#54ACBF] text-[#A7EBF2] shadow-sm shadow-[#54ACBF]/20 group-hover:scale-105 transition-transform">
-            <Sparkles className="w-5 h-5 text-white" />
-          </div>
+        <Link href="/" className="flex items-center gap-2.5 select-none group">
+          <Image
+            src="/images/logo.png"
+            alt="My Keeps Logo"
+            width={36}
+            height={36}
+            className="w-9 h-9 rounded-full object-contain shadow-sm group-hover:scale-105 transition-transform"
+            priority
+          />
           <span className="font-bold text-lg tracking-tight text-[#011C40] dark:text-white hidden sm:inline-block">
             My Keeps
           </span>
