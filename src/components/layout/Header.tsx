@@ -83,7 +83,7 @@ export function Header() {
 
         <Link href="/" className="flex items-center gap-2.5 select-none group">
           <Image
-            src="/images/logo.png"
+            src="/images/MKlogo.png"
             alt="My Keeps Logo"
             width={36}
             height={36}
