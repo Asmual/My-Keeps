@@ -72,7 +72,7 @@ export default function LoginPage() {
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center mb-3">
             <Image
-              src="/images/MKlogo.png"
+              src="/images/MK-logo.png"
               alt="My Keeps Logo"
               width={56}
               height={56}

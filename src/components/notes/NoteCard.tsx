@@ -36,6 +36,7 @@ export function NoteCard({ note, isTrashView = false }: NoteCardProps) {
     toggleImportant,
     archiveNote,
     unarchiveNote,
+    trashNote,
     restoreNote,
     deletePermanently,
     changeColor,
@@ -453,7 +454,7 @@ export function NoteCard({ note, isTrashView = false }: NoteCardProps) {
             <button
               type="button"
               onClick={() => setIsConfirmDeleteOpen(true)}
-              title="Delete note permanently"
+              title="Delete note"
               className="p-1.5 rounded-full text-slate-600 dark:text-[#A7EBF2]/80 hover:bg-rose-100 dark:hover:bg-rose-950/60 hover:text-rose-600 transition-colors cursor-pointer"
             >
               <Trash2 className="w-3.5 h-3.5" />
@@ -488,10 +489,16 @@ export function NoteCard({ note, isTrashView = false }: NoteCardProps) {
       <ConfirmModal
         isOpen={isConfirmDeleteOpen}
         onClose={() => setIsConfirmDeleteOpen(false)}
-        onConfirm={() => deletePermanently(note.id)}
-        title="Delete note permanently?"
-        description="This will permanently delete this note from MongoDB. This action cannot be undone."
-        confirmText="Delete Note"
+        onConfirm={() => {
+          if (isTrashView) {
+            deletePermanently(note.id);
+          } else {
+            trashNote(note.id);
+          }
+        }}
+        description="Are you want to delete this note?"
+        confirmText="Delete"
+        cancelText="Cancel"
         variant="danger"
       />
     </div>

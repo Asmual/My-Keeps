@@ -16,10 +16,10 @@ import {
   Loader2,
   Play,
   Pause,
-  GripVertical,
   ChevronRight,
   Check,
 } from 'lucide-react';
+import { GripVertical } from '@/components/ui/GripIcon';
 import { useNotes } from '@/hooks/useNotes';
 import { NOTE_COLORS } from '@/lib/constants';
 import { ColorPicker } from './ColorPicker';
@@ -38,7 +38,12 @@ interface NoteEditModalContentProps {
 }
 
 function NoteEditModalContent({ note, onClose }: NoteEditModalContentProps) {
-  const { updateNote, archiveNote, unarchiveNote, deletePermanently } = useNotes();
+  const {
+    updateNote,
+    archiveNote,
+    unarchiveNote,
+    trashNote,
+  } = useNotes();
 
   const [title, setTitle] = useState(note.title || '');
   const [content, setContent] = useState(note.content || '');
@@ -665,7 +670,7 @@ function NoteEditModalContent({ note, onClose }: NoteEditModalContentProps) {
         </div>
       </div>
 
-      {/* Permanently delete note from MongoDB */}
+      {/* Move note to trash with undo toast */}
       <ConfirmModal
         isOpen={isConfirmTrashOpen}
         onClose={() => setIsConfirmTrashOpen(false)}
@@ -674,12 +679,12 @@ function NoteEditModalContent({ note, onClose }: NoteEditModalContentProps) {
             audioPreviewRef.current.pause();
             audioPreviewRef.current = null;
           }
-          deletePermanently(note.id);
+          trashNote(note.id);
           onClose();
         }}
-        title="Delete note permanently?"
-        description="This note will be permanently deleted from MongoDB. This action cannot be undone."
-        confirmText="Delete Note"
+        description="Are you want to delete this note?"
+        confirmText="Delete"
+        cancelText="Cancel"
         variant="danger"
       />
 

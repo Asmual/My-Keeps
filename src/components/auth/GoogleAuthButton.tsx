@@ -22,10 +22,18 @@ export function GoogleAuthButton({
   const handleGoogleSignIn = async () => {
     setIsLoading(true);
     try {
-      await signIn.social({
+      const res = await signIn.social({
         provider: 'google',
         callbackURL: '/',
       });
+      if (res?.error) {
+        const errorMsg = res.error.message || 'Failed to sign in with Google';
+        toast.error(errorMsg);
+        if (onError) onError(errorMsg);
+        setIsLoading(false);
+      } else if (res?.data?.url) {
+        window.location.href = res.data.url;
+      }
     } catch (err) {
       console.error('Google Sign In Error:', err);
       const msg = (err as Error)?.message || 'Failed to sign in with Google. Please try again.';

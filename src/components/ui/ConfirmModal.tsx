@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useSyncExternalStore } from 'react';
+import { createPortal } from 'react-dom';
 import { AlertTriangle, Trash2, X } from 'lucide-react';
 import { Button } from './Button';
 import { cn } from '@/lib/utils';
@@ -9,7 +10,7 @@ interface ConfirmModalProps {
   isOpen: boolean;
   onClose: () => void;
   onConfirm: () => void;
-  title: string;
+  title?: string;
   description: string;
   confirmText?: string;
   cancelText?: string;
@@ -17,17 +18,25 @@ interface ConfirmModalProps {
   isLoading?: boolean;
 }
 
+const emptySubscribe = () => () => {};
+
 export function ConfirmModal({
   isOpen,
   onClose,
   onConfirm,
   title,
   description,
-  confirmText = 'Confirm',
+  confirmText = 'Delete',
   cancelText = 'Cancel',
   variant = 'danger',
   isLoading = false,
 }: ConfirmModalProps) {
+  const isMounted = useSyncExternalStore(
+    emptySubscribe,
+    () => true,
+    () => false
+  );
+
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key === 'Escape') {
@@ -40,16 +49,17 @@ export function ConfirmModal({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose]);
 
-  if (!isOpen) return null;
+  if (!isOpen || !isMounted) return null;
 
-  return (
+  return createPortal(
     <div
       onClick={onClose}
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#011C40]/60 backdrop-blur-xs animate-in fade-in duration-150"
+      className="fixed inset-0 z-[200] flex items-center justify-center p-4 sm:p-6 bg-[#011C40]/65 backdrop-blur-sm animate-in fade-in duration-150 overflow-y-auto"
+      style={{ minHeight: '100dvh' }}
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-sm rounded-3xl p-6 bg-white dark:bg-[#023859] border border-[#A7EBF2] dark:border-[#26658C] shadow-2xl animate-in zoom-in-95 duration-150 select-none space-y-4"
+        className="my-auto w-full max-w-sm rounded-3xl p-6 bg-white dark:bg-[#023859] border border-[#A7EBF2] dark:border-[#26658C] shadow-2xl animate-in zoom-in-95 duration-150 select-none space-y-4"
       >
         <div className="flex items-start gap-3.5">
           <div
@@ -68,10 +78,12 @@ export function ConfirmModal({
           </div>
 
           <div className="flex-1 min-w-0">
-            <h3 className="text-base font-bold text-[#011C40] dark:text-white leading-snug">
-              {title}
-            </h3>
-            <p className="text-xs text-slate-500 dark:text-[#A7EBF2]/70 mt-1 leading-relaxed">
+            {title && (
+              <h3 className="text-base font-bold text-[#011C40] dark:text-white leading-snug">
+                {title}
+              </h3>
+            )}
+            <p className={cn("text-slate-600 dark:text-[#A7EBF2]/90 leading-relaxed font-medium", title ? "text-xs mt-1" : "text-sm")}>
               {description}
             </p>
           </div>
@@ -103,12 +115,13 @@ export function ConfirmModal({
               onClose();
             }}
             disabled={isLoading}
-            className="text-xs px-4 font-semibold"
+            className="text-xs px-5 font-semibold"
           >
             {confirmText}
           </Button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

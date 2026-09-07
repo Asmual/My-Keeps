@@ -333,17 +333,37 @@ export function NotesProvider({ children }: { children: React.ReactNode }) {
   const archiveNote = async (id: string): Promise<void> => {
     if (!requireAuth('archive notes')) return;
 
-    toast('Note archived', { icon: '📦' });
     if (activeEditNote?.id === id) setActiveEditNoteState(null);
-
     await updateNote(id, { isArchived: true, isPinned: false });
+
+    toast(
+      (t) => (
+        <div className="flex items-center justify-between gap-3 text-xs sm:text-sm font-medium">
+          <span>Your note is archived</span>
+          <button
+            type="button"
+            onClick={() => {
+              unarchiveNote(id);
+              toast.dismiss(t.id);
+            }}
+            className="px-2.5 py-1 text-xs font-semibold rounded-lg bg-[#54ACBF] text-[#011C40] hover:bg-[#A7EBF2] transition-colors cursor-pointer shadow-xs shrink-0"
+          >
+            Undo
+          </button>
+        </div>
+      ),
+      {
+        duration: 4000,
+        icon: '📦',
+      }
+    );
   };
 
   // UNARCHIVE
   const unarchiveNote = async (id: string): Promise<void> => {
     if (!requireAuth('unarchive notes')) return;
 
-    toast('Note unarchived', { icon: '📂' });
+    toast.success('Note unarchived');
     await updateNote(id, { isArchived: false });
   };
 
@@ -351,10 +371,30 @@ export function NotesProvider({ children }: { children: React.ReactNode }) {
   const trashNote = async (id: string): Promise<void> => {
     if (!requireAuth('delete notes')) return;
 
-    toast('Note moved to trash', { icon: '🗑️' });
     if (activeEditNote?.id === id) setActiveEditNoteState(null);
-
     await updateNote(id, { isTrashed: true, isPinned: false });
+
+    toast(
+      (t) => (
+        <div className="flex items-center justify-between gap-3 text-xs sm:text-sm font-medium">
+          <span>Successfully Deleted</span>
+          <button
+            type="button"
+            onClick={() => {
+              restoreNote(id);
+              toast.dismiss(t.id);
+            }}
+            className="px-2.5 py-1 text-xs font-semibold rounded-lg bg-[#54ACBF] text-[#011C40] hover:bg-[#A7EBF2] transition-colors cursor-pointer shadow-xs shrink-0"
+          >
+            Undo
+          </button>
+        </div>
+      ),
+      {
+        duration: 4000,
+        icon: '🗑️',
+      }
+    );
   };
 
   // RESTORE

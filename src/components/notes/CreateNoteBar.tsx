@@ -15,10 +15,10 @@ import {
   Loader2,
   Play,
   Pause,
-  GripVertical,
   ChevronRight,
   Check,
 } from 'lucide-react';
+import { GripVertical } from '@/components/ui/GripIcon';
 import { useNotes } from '@/hooks/useNotes';
 import { ColorPicker } from './ColorPicker';
 import { VoiceRecorder } from './VoiceRecorder';
