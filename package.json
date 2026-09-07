@@ -10,7 +10,9 @@
   },
   "dependencies": {
     "@hookform/resolvers": "^5.9.1",
+    "better-auth": "^1.7.3",
     "lucide-react": "^1.42.0",
+    "mongodb": "^7.6.0",
     "mongoose": "^9.9.5",
     "next": "16.3.4",
     "react": "19.2.8",
