@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 'use client';
 
 import React, { useState, useCallback, useEffect, useRef } from 'react';
@@ -15,8 +16,10 @@ import {
   Loader2,
   Play,
   Pause,
+  GripVertical,
+  ChevronRight,
+  Check,
 } from 'lucide-react';
-import Image from 'next/image';
 import { useNotes } from '@/hooks/useNotes';
 import { NOTE_COLORS } from '@/lib/constants';
 import { ColorPicker } from './ColorPicker';
@@ -50,6 +53,8 @@ function NoteEditModalContent({ note, onClose }: NoteEditModalContentProps) {
   const [labels, setLabels] = useState<string[]>(note.labels || []);
   const [checklist, setChecklist] = useState<CheckItem[]>(note.checklist || []);
   const [newCheckItem, setNewCheckItem] = useState('');
+  const [showCompleted, setShowCompleted] = useState(false);
+  const [draggedChecklistIdx, setDraggedChecklistIdx] = useState<number | null>(null);
   const [newLabelInput, setNewLabelInput] = useState('');
   const [showLabelInput, setShowLabelInput] = useState(false);
   const [isConfirmTrashOpen, setIsConfirmTrashOpen] = useState(false);
@@ -178,6 +183,32 @@ function NoteEditModalContent({ note, onClose }: NoteEditModalContentProps) {
     setNewCheckItem('');
   };
 
+  const handleChecklistDragStart = (e: React.DragEvent, index: number) => {
+    setDraggedChecklistIdx(index);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleChecklistDrop = (e: React.DragEvent, targetIndex: number) => {
+    e.preventDefault();
+    if (draggedChecklistIdx === null || draggedChecklistIdx === targetIndex) return;
+
+    const uncompleted = checklist.filter((item) => !item.completed);
+    const completed = checklist.filter((item) => item.completed);
+
+    const updated = [...uncompleted];
+    const [movedItem] = updated.splice(draggedChecklistIdx, 1);
+    updated.splice(targetIndex, 0, movedItem);
+
+    setChecklist([...updated, ...completed]);
+    setDraggedChecklistIdx(null);
+  };
+
+  const handleToggleCheckItem = (id: string) => {
+    setChecklist((prev) =>
+      prev.map((c) => (c.id === id ? { ...c, completed: !c.completed } : c))
+    );
+  };
+
   const handleAddLabel = (e?: React.KeyboardEvent) => {
     if (e && e.key !== 'Enter') return;
     const trimmed = newLabelInput.trim();
@@ -259,12 +290,11 @@ function NoteEditModalContent({ note, onClose }: NoteEditModalContentProps) {
                     key={idx}
                     className="relative group rounded-xl overflow-hidden aspect-video border border-black/10 dark:border-white/10"
                   >
-                    <Image
+                    <img
                       src={img}
                       alt={`Note attachment ${idx + 1}`}
-                      fill
-                      className="object-cover"
-                      unoptimized
+                      className="w-full h-full object-cover"
+                      loading="lazy"
                     />
                     <button
                       type="button"
@@ -348,54 +378,75 @@ function NoteEditModalContent({ note, onClose }: NoteEditModalContentProps) {
             {/* Checklist */}
             {checklist.length > 0 && (
               <div className="space-y-2 border-t border-black/5 dark:border-white/10 pt-3">
-                {checklist.map((item, idx) => (
-                  <div key={item.id} className="flex items-center gap-2 group text-sm">
-                    <input
-                      type="checkbox"
-                      checked={item.completed}
-                      onChange={() =>
-                        setChecklist((prev) =>
-                          prev.map((c, i) =>
-                            i === idx ? { ...c, completed: !c.completed } : c
-                          )
-                        )
-                      }
-                      className="rounded accent-[#023859] dark:accent-[#54ACBF] cursor-pointer"
-                    />
-                    <input
-                      type="text"
-                      value={item.text}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        setChecklist((prev) =>
-                          prev.map((c, i) => (i === idx ? { ...c, text: val } : c))
-                        );
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault();
-                          const nextInput = document.getElementById('modal-new-check-item');
-                          if (nextInput) nextInput.focus();
-                        } else if (e.key === 'Backspace' && item.text === '') {
-                          e.preventDefault();
-                          setChecklist((prev) => prev.filter((_, i) => i !== idx));
-                        }
-                      }}
-                      className={cn(
-                        'flex-1 min-w-0 bg-transparent border-b border-transparent hover:border-slate-300 dark:hover:border-slate-600 focus:border-[#54ACBF] focus:outline-none transition-colors text-[#011C40] dark:text-white',
-                        item.completed && 'line-through text-slate-400 dark:text-[#A7EBF2]/50'
-                      )}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setChecklist((prev) => prev.filter((_, i) => i !== idx))}
-                      className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-white cursor-pointer shrink-0"
-                    >
-                      <X className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                ))}
-                <div className="flex items-center gap-2 pt-1">
+                {/* Active Uncompleted Checklist Items */}
+                <div className="space-y-1">
+                  {checklist
+                    .filter((item) => !item.completed)
+                    .map((item, idx) => (
+                      <div
+                        key={item.id}
+                        draggable
+                        onDragStart={(e) => handleChecklistDragStart(e, idx)}
+                        onDragOver={(e) => e.preventDefault()}
+                        onDrop={(e) => handleChecklistDrop(e, idx)}
+                        className={cn(
+                          'flex items-center gap-2 group rounded-xl p-1 -ml-1 transition-all',
+                          draggedChecklistIdx === idx && 'opacity-40 bg-black/5 dark:bg-white/5'
+                        )}
+                      >
+                        {/* Drag Handle */}
+                        <div
+                          className="cursor-grab active:cursor-grabbing text-slate-300 dark:text-slate-600 group-hover:text-slate-500 dark:group-hover:text-[#54ACBF] transition-colors p-0.5"
+                          title="Drag to reorder"
+                        >
+                          <GripVertical className="w-4 h-4" />
+                        </div>
+
+                        {/* Google Keep style custom checkbox */}
+                        <button
+                          type="button"
+                          onClick={() => handleToggleCheckItem(item.id)}
+                          className="w-5 h-5 rounded-md border-2 border-slate-400 dark:border-[#54ACBF] hover:border-[#023859] dark:hover:border-white transition-all flex items-center justify-center shrink-0 cursor-pointer"
+                          title="Mark completed"
+                        />
+
+                        {/* Checklist Item Text (Larger, readable font) */}
+                        <input
+                          type="text"
+                          value={item.text}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setChecklist((prev) =>
+                              prev.map((c) => (c.id === item.id ? { ...c, text: val } : c))
+                            );
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              const nextInput = document.getElementById('modal-new-check-item');
+                              if (nextInput) nextInput.focus();
+                            } else if (e.key === 'Backspace' && item.text === '') {
+                              e.preventDefault();
+                              setChecklist((prev) => prev.filter((c) => c.id !== item.id));
+                            }
+                          }}
+                          className="flex-1 min-w-0 text-sm sm:text-base font-normal bg-transparent border-b border-transparent hover:border-slate-300 dark:hover:border-slate-600 focus:border-[#54ACBF] focus:outline-none transition-colors text-[#011C40] dark:text-white py-0.5"
+                        />
+
+                        <button
+                          type="button"
+                          onClick={() => setChecklist((prev) => prev.filter((c) => c.id !== item.id))}
+                          className="opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-rose-500 transition-opacity cursor-pointer shrink-0"
+                          title="Delete item"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                </div>
+
+                {/* Add new checklist item input */}
+                <div className="flex items-center gap-2 pt-1 pl-6">
                   <Plus className="w-4 h-4 text-[#54ACBF] shrink-0" />
                   <input
                     id="modal-new-check-item"
@@ -403,10 +454,72 @@ function NoteEditModalContent({ note, onClose }: NoteEditModalContentProps) {
                     value={newCheckItem}
                     onChange={(e) => setNewCheckItem(e.target.value)}
                     onKeyDown={handleAddCheckItem}
-                    placeholder="Add checklist item (press Enter)..."
-                    className="w-full min-w-0 bg-transparent text-sm text-[#011C40] dark:text-white placeholder-slate-400 dark:placeholder-[#A7EBF2]/50 focus:outline-none"
+                    placeholder="List item (press Enter for next)..."
+                    className="w-full min-w-0 bg-transparent text-sm sm:text-base text-[#011C40] dark:text-white placeholder-slate-400 dark:placeholder-[#A7EBF2]/50 focus:outline-none"
                   />
                 </div>
+
+                {/* Google Keep / Sheets style Completed section */}
+                {checklist.filter((item) => item.completed).length > 0 && (
+                  <div className="pt-3 mt-3 border-t border-black/5 dark:border-white/10">
+                    <button
+                      type="button"
+                      onClick={() => setShowCompleted((prev) => !prev)}
+                      className="flex items-center gap-2 text-xs font-semibold text-slate-500 dark:text-[#A7EBF2]/70 hover:text-[#011C40] dark:hover:text-white mb-2 transition-colors cursor-pointer select-none"
+                    >
+                      <ChevronRight
+                        className={cn(
+                          'w-4 h-4 transition-transform duration-200',
+                          showCompleted && 'rotate-90'
+                        )}
+                      />
+                      <span>
+                        {checklist.filter((item) => item.completed).length} completed{' '}
+                        {checklist.filter((item) => item.completed).length === 1 ? 'item' : 'items'}
+                      </span>
+                    </button>
+
+                    {showCompleted && (
+                      <div className="space-y-1.5 pl-6 animate-in fade-in duration-150">
+                        {checklist
+                          .filter((item) => item.completed)
+                          .map((item) => (
+                            <div key={item.id} className="flex items-center gap-2 group py-0.5">
+                              {/* Checked box with check icon - click to uncheck & move back up */}
+                              <button
+                                type="button"
+                                onClick={() => handleToggleCheckItem(item.id)}
+                                className="w-5 h-5 rounded-md bg-[#54ACBF] border-2 border-[#54ACBF] flex items-center justify-center text-white transition-all shrink-0 cursor-pointer shadow-xs"
+                                title="Mark uncompleted"
+                              >
+                                <Check className="w-3.5 h-3.5 stroke-[3]" />
+                              </button>
+
+                              {/* Completed text with prominent strikethrough */}
+                              <span
+                                onClick={() => handleToggleCheckItem(item.id)}
+                                className="flex-1 text-sm sm:text-base line-through decoration-2 decoration-slate-400 dark:decoration-[#A7EBF2]/50 text-slate-400 dark:text-[#A7EBF2]/50 select-none cursor-pointer py-0.5"
+                                title="Click to restore to uncompleted"
+                              >
+                                {item.text}
+                              </span>
+
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setChecklist((prev) => prev.filter((c) => c.id !== item.id))
+                                }
+                                className="opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-rose-500 transition-opacity cursor-pointer shrink-0"
+                                title="Delete item"
+                              >
+                                <X className="w-4 h-4" />
+                              </button>
+                            </div>
+                          ))}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             )}
 

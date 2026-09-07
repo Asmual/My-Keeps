@@ -15,7 +15,9 @@ export default function NotesPage() {
     (n) =>
       !n.isArchived &&
       !n.isTrashed &&
-      (!n.noteType || n.noteType === 'text') &&
+      n.noteType !== 'image' &&
+      n.noteType !== 'voice' &&
+      n.noteType !== 'checklist' &&
       (!n.images || n.images.length === 0) &&
       !n.audioUrl &&
       (!n.checklist || n.checklist.length === 0)

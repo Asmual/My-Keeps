@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 'use client';
 
 import React, { useState, useRef } from 'react';
@@ -13,8 +14,8 @@ import {
   Star,
   Play,
   Pause,
+  ChevronRight,
 } from 'lucide-react';
-import Image from 'next/image';
 import { Note } from '@/types/note';
 import { NOTE_COLORS } from '@/lib/constants';
 import { useNotes } from '@/hooks/useNotes';
@@ -51,6 +52,7 @@ export function NoteCard({ note, isTrashView = false }: NoteCardProps) {
   const [tagInputValue, setTagInputValue] = useState('');
   const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = useState(false);
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
+  const [showCompleted, setShowCompleted] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const isSelected = selectedNoteIds.includes(note.id);
@@ -129,12 +131,11 @@ export function NoteCard({ note, isTrashView = false }: NoteCardProps) {
                   key={idx}
                   className="relative aspect-video w-full bg-slate-100 dark:bg-black/20"
                 >
-                  <Image
+                  <img
                     src={img}
                     alt={`Note attachment ${idx + 1}`}
-                    fill
-                    className="object-cover"
-                    unoptimized
+                    className="w-full h-full object-cover"
+                    loading="lazy"
                   />
                 </div>
               ))}
@@ -257,38 +258,93 @@ export function NoteCard({ note, isTrashView = false }: NoteCardProps) {
         )}
 
         {/* Checklist preview */}
-        {note.checklist && note.checklist.length > 0 && (
-          <div className="space-y-1.5 mb-3">
-            {note.checklist.slice(0, 8).map((item) => (
-              <div
-                key={item.id}
-                onClick={(e) => handleToggleCheckItem(e, item.id)}
-                className="flex items-center gap-2 text-xs text-slate-700 dark:text-slate-200 hover:opacity-80 py-0.5 px-1 rounded-md hover:bg-black/5 dark:hover:bg-white/5 cursor-pointer transition-colors"
-                title={item.completed ? 'Click to uncheck' : 'Click to complete'}
-              >
-                <input
-                  type="checkbox"
-                  checked={item.completed}
-                  readOnly
-                  className="rounded accent-[#023859] dark:accent-[#54ACBF] cursor-pointer pointer-events-none w-3.5 h-3.5"
-                />
-                <span
-                  className={cn(
-                    'truncate flex-1 select-none',
-                    item.completed && 'line-through text-slate-400 dark:text-[#A7EBF2]/40'
+        {note.checklist && note.checklist.length > 0 && (() => {
+          const uncompletedItems = note.checklist.filter((item) => !item.completed);
+          const completedItems = note.checklist.filter((item) => item.completed);
+
+          return (
+            <div className="space-y-2 mb-3">
+              {/* Active uncompleted items */}
+              {uncompletedItems.length > 0 && (
+                <div className="space-y-1">
+                  {uncompletedItems.slice(0, 6).map((item) => (
+                    <div
+                      key={item.id}
+                      onClick={(e) => handleToggleCheckItem(e, item.id)}
+                      className="flex items-center gap-2.5 py-1 px-1.5 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 cursor-pointer transition-colors group/item"
+                      title="Click to complete"
+                    >
+                      {/* Google Keep style custom checkbox */}
+                      <button
+                        type="button"
+                        onClick={(e) => handleToggleCheckItem(e, item.id)}
+                        className="w-4 h-4 sm:w-5 sm:h-5 rounded-md border-2 border-slate-400 dark:border-[#54ACBF] group-hover/item:border-[#023859] dark:group-hover/item:border-white transition-colors flex items-center justify-center shrink-0 bg-white/40 dark:bg-black/20"
+                        title="Mark completed"
+                      />
+                      <span className="text-sm sm:text-base text-slate-800 dark:text-slate-100 truncate flex-1 select-none font-normal">
+                        {item.text}
+                      </span>
+                    </div>
+                  ))}
+                  {uncompletedItems.length > 6 && (
+                    <p className="text-xs text-[#54ACBF] font-medium italic pt-0.5 px-1.5">
+                      +{uncompletedItems.length - 6} more uncompleted items
+                    </p>
                   )}
-                >
-                  {item.text}
-                </span>
-              </div>
-            ))}
-            {note.checklist.length > 8 && (
-              <p className="text-xs text-[#54ACBF] italic pt-0.5 px-1">
-                +{note.checklist.length - 8} more items
-              </p>
-            )}
-          </div>
-        )}
+                </div>
+              )}
+
+              {/* Collapsible Completed items section (Google Keep & Google Docs/Sheets style) */}
+              {completedItems.length > 0 && (
+                <div className="pt-2 border-t border-black/5 dark:border-white/10 mt-1">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowCompleted((prev) => !prev);
+                    }}
+                    className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 dark:text-[#A7EBF2]/70 hover:text-[#011C40] dark:hover:text-white mb-1 transition-colors cursor-pointer select-none"
+                  >
+                    <ChevronRight
+                      className={cn(
+                        'w-3.5 h-3.5 transition-transform duration-200',
+                        showCompleted && 'rotate-90'
+                      )}
+                    />
+                    <span>
+                      {completedItems.length} completed {completedItems.length === 1 ? 'item' : 'items'}
+                    </span>
+                  </button>
+
+                  {showCompleted && (
+                    <div className="space-y-1 pl-1.5 animate-in fade-in duration-150">
+                      {completedItems.map((item) => (
+                        <div
+                          key={item.id}
+                          onClick={(e) => handleToggleCheckItem(e, item.id)}
+                          className="flex items-center gap-2.5 py-0.5 px-1.5 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 cursor-pointer transition-colors group/item"
+                          title="Click to restore to uncompleted"
+                        >
+                          <button
+                            type="button"
+                            onClick={(e) => handleToggleCheckItem(e, item.id)}
+                            className="w-4 h-4 sm:w-5 sm:h-5 rounded-md bg-[#023859] dark:bg-[#54ACBF] border-2 border-[#023859] dark:border-[#54ACBF] flex items-center justify-center text-white dark:text-[#011C40] shrink-0 shadow-xs"
+                            title="Mark uncompleted"
+                          >
+                            <Check className="w-3 h-3 sm:w-3.5 sm:h-3.5 stroke-[3]" />
+                          </button>
+                          <span className="text-sm sm:text-base line-through decoration-2 decoration-slate-400 dark:decoration-[#A7EBF2]/50 text-slate-400 dark:text-[#A7EBF2]/50 truncate flex-1 select-none">
+                            {item.text}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })()}
 
         {/* Labels / Tags (Soft Ice Blue with dark text) */}
         {note.labels && note.labels.length > 0 && (
