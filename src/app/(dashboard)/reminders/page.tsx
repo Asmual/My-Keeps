@@ -19,7 +19,7 @@ export default function RemindersPage() {
           <Bell className="w-5 h-5 text-[#54ACBF] dark:text-[#A7EBF2]" />
         </div>
         <h1 className="text-xl font-bold tracking-tight text-[#011C40] dark:text-white">
-          Reminders
+          Notes Reminders
         </h1>
         {reminderNotes.length > 0 && (
           <span className="px-2.5 py-0.5 text-xs rounded-full bg-[#54ACBF]/20 text-[#023859] dark:text-[#A7EBF2] font-semibold border border-[#54ACBF]/30">

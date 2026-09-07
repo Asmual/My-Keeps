@@ -6,10 +6,22 @@ import {
   Bell,
   SearchX,
   Tag,
+  Star,
+  Image as ImageIcon,
+  Mic,
   LucideIcon,
 } from 'lucide-react';
 
-type EmptyStateType = 'notes' | 'archive' | 'trash' | 'reminders' | 'search' | 'label';
+type EmptyStateType =
+  | 'notes'
+  | 'archive'
+  | 'trash'
+  | 'reminders'
+  | 'search'
+  | 'label'
+  | 'important'
+  | 'imageNotes'
+  | 'voiceNotes';
 
 interface EmptyStateProps {
   type: EmptyStateType;
@@ -48,6 +60,24 @@ export function EmptyState({ type, customMessage }: EmptyStateProps) {
       title: 'No upcoming reminders',
       description: 'Add reminders to stay on top of critical deadlines.',
       colorClass: 'text-[#A7EBF2] bg-[#26658C]/30 dark:bg-[#023859] border border-[#26658C]',
+    },
+    important: {
+      icon: Star,
+      title: 'No important notes yet',
+      description: 'Click the star icon on any note to keep your most vital notes here.',
+      colorClass: 'text-amber-400 bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-900',
+    },
+    imageNotes: {
+      icon: ImageIcon,
+      title: 'No image notes yet',
+      description: 'Create notes with photos, screenshots, or diagram attachments.',
+      colorClass: 'text-[#54ACBF] bg-[#54ACBF]/15 dark:bg-[#023859] border border-[#54ACBF]/40',
+    },
+    voiceNotes: {
+      icon: Mic,
+      title: 'No voice memos yet',
+      description: 'Record quick audio thoughts with the microphone button.',
+      colorClass: 'text-[#54ACBF] bg-[#A7EBF2]/20 dark:bg-[#023859] border border-[#26658C]',
     },
     search: {
       icon: SearchX,

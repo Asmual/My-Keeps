@@ -28,19 +28,35 @@ interface NotesContextType {
     archive: number;
     trash: number;
     reminders: number;
+    important: number;
+    imageNotes: number;
+    voiceNotes: number;
   };
+  selectedNoteIds: string[];
+  toggleSelectNote: (id: string) => void;
+  selectAll: (ids?: string[]) => void;
+  clearSelection: () => void;
   isAuthenticated: boolean;
   currentUser: { id: string; email: string; name?: string } | null;
   requireAuth: (actionName?: string) => boolean;
   createNote: (noteData: Partial<Note>) => Promise<Note | null>;
   updateNote: (id: string, updates: Partial<Note>) => Promise<void>;
   togglePin: (id: string) => Promise<void>;
+  toggleImportant: (id: string) => Promise<void>;
   archiveNote: (id: string) => Promise<void>;
   unarchiveNote: (id: string) => Promise<void>;
   trashNote: (id: string) => Promise<void>;
   restoreNote: (id: string) => Promise<void>;
   deletePermanently: (id: string) => Promise<void>;
   emptyTrash: () => Promise<void>;
+  batchTrash: () => Promise<void>;
+  batchArchive: () => Promise<void>;
+  batchUnarchive: () => Promise<void>;
+  batchDeletePermanently: () => Promise<void>;
+  batchRestore: () => Promise<void>;
+  batchChangeColor: (color: NoteColorId) => Promise<void>;
+  batchToggleImportant: (mark?: boolean) => Promise<void>;
+  batchTogglePin: () => Promise<void>;
   changeColor: (id: string, color: NoteColorId) => Promise<void>;
   addLabel: (id: string, label: string) => Promise<void>;
   removeLabel: (id: string, label: string) => Promise<void>;
@@ -62,6 +78,26 @@ export function NotesProvider({ children }: { children: React.ReactNode }) {
   const [selectedLabel, setSelectedLabel] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [activeEditNote, setActiveEditNoteState] = useState<Note | null>(null);
+  const [selectedNoteIds, setSelectedNoteIds] = useState<string[]>([]);
+
+  const toggleSelectNote = useCallback((id: string) => {
+    setSelectedNoteIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+  }, []);
+
+  const selectAll = useCallback((ids?: string[]) => {
+    if (ids && ids.length > 0) {
+      setSelectedNoteIds(ids);
+    } else {
+      const activeIds = notes.filter((n) => !n.isArchived && !n.isTrashed).map((n) => n.id);
+      setSelectedNoteIds(activeIds);
+    }
+  }, [notes]);
+
+  const clearSelection = useCallback(() => {
+    setSelectedNoteIds([]);
+  }, []);
 
   const userId = session?.user?.id;
   const isAuthenticated = Boolean(session?.user);
@@ -170,6 +206,13 @@ export function NotesProvider({ children }: { children: React.ReactNode }) {
       archive: notes.filter((n) => n.isArchived && !n.isTrashed).length,
       trash: notes.filter((n) => n.isTrashed).length,
       reminders: notes.filter((n) => !n.isArchived && !n.isTrashed && Boolean(n.reminder)).length,
+      important: notes.filter((n) => !n.isArchived && !n.isTrashed && Boolean(n.isImportant)).length,
+      imageNotes: notes.filter(
+        (n) => !n.isArchived && !n.isTrashed && (n.noteType === 'image' || (n.images && n.images.length > 0))
+      ).length,
+      voiceNotes: notes.filter(
+        (n) => !n.isArchived && !n.isTrashed && (n.noteType === 'voice' || Boolean(n.audioUrl))
+      ).length,
     };
   }, [notes]);
 
@@ -255,6 +298,21 @@ export function NotesProvider({ children }: { children: React.ReactNode }) {
     });
 
     await updateNote(id, { isPinned: nextPinned });
+  };
+
+  // TOGGLE IMPORTANT
+  const toggleImportant = async (id: string): Promise<void> => {
+    if (!requireAuth('mark notes as important')) return;
+
+    const note = notes.find((n) => n.id === id);
+    if (!note) return;
+
+    const nextImportant = !note.isImportant;
+    toast(nextImportant ? 'Marked as Important ⭐' : 'Removed from Important', {
+      icon: nextImportant ? '⭐' : '☆',
+    });
+
+    await updateNote(id, { isImportant: nextImportant });
   };
 
   // ARCHIVE
@@ -372,6 +430,249 @@ export function NotesProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  // BATCH TRASH
+  const batchTrash = async (): Promise<void> => {
+    if (!requireAuth('delete notes')) return;
+    if (selectedNoteIds.length === 0) return;
+
+    const count = selectedNoteIds.length;
+    setNotes((prev) =>
+      prev.map((n) =>
+        selectedNoteIds.includes(n.id)
+          ? { ...n, isTrashed: true, isPinned: false }
+          : n
+      )
+    );
+    const idsToTrash = [...selectedNoteIds];
+    setSelectedNoteIds([]);
+    toast.success(`${count} notes moved to trash`);
+
+    try {
+      await Promise.all(
+        idsToTrash.map((id) =>
+          fetch(`/api/notes/${id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ isTrashed: true, isPinned: false }),
+          })
+        )
+      );
+    } catch (err) {
+      console.error('Error in batch trash:', err);
+    }
+  };
+
+  // BATCH ARCHIVE
+  const batchArchive = async (): Promise<void> => {
+    if (!requireAuth('archive notes')) return;
+    if (selectedNoteIds.length === 0) return;
+
+    const count = selectedNoteIds.length;
+    setNotes((prev) =>
+      prev.map((n) =>
+        selectedNoteIds.includes(n.id)
+          ? { ...n, isArchived: true, isPinned: false }
+          : n
+      )
+    );
+    const idsToArchive = [...selectedNoteIds];
+    setSelectedNoteIds([]);
+    toast.success(`${count} notes archived`);
+
+    try {
+      await Promise.all(
+        idsToArchive.map((id) =>
+          fetch(`/api/notes/${id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ isArchived: true, isPinned: false }),
+          })
+        )
+      );
+    } catch (err) {
+      console.error('Error in batch archive:', err);
+    }
+  };
+
+  // BATCH UNARCHIVE
+  const batchUnarchive = async (): Promise<void> => {
+    if (!requireAuth('unarchive notes')) return;
+    if (selectedNoteIds.length === 0) return;
+
+    const count = selectedNoteIds.length;
+    setNotes((prev) =>
+      prev.map((n) =>
+        selectedNoteIds.includes(n.id) ? { ...n, isArchived: false } : n
+      )
+    );
+    const idsToUnarchive = [...selectedNoteIds];
+    setSelectedNoteIds([]);
+    toast.success(`${count} notes unarchived`);
+
+    try {
+      await Promise.all(
+        idsToUnarchive.map((id) =>
+          fetch(`/api/notes/${id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ isArchived: false }),
+          })
+        )
+      );
+    } catch (err) {
+      console.error('Error in batch unarchive:', err);
+    }
+  };
+
+  // BATCH DELETE PERMANENTLY
+  const batchDeletePermanently = async (): Promise<void> => {
+    if (!requireAuth('delete notes permanently')) return;
+    if (selectedNoteIds.length === 0) return;
+
+    const count = selectedNoteIds.length;
+    setNotes((prev) => prev.filter((n) => !selectedNoteIds.includes(n.id)));
+    const idsToDelete = [...selectedNoteIds];
+    setSelectedNoteIds([]);
+    toast.error(`${count} notes permanently deleted`);
+
+    try {
+      await Promise.all(
+        idsToDelete.map((id) => fetch(`/api/notes/${id}`, { method: 'DELETE' }))
+      );
+    } catch (err) {
+      console.error('Error in batch delete permanently:', err);
+    }
+  };
+
+  // BATCH RESTORE
+  const batchRestore = async (): Promise<void> => {
+    if (!requireAuth('restore notes')) return;
+    if (selectedNoteIds.length === 0) return;
+
+    const count = selectedNoteIds.length;
+    setNotes((prev) =>
+      prev.map((n) =>
+        selectedNoteIds.includes(n.id) ? { ...n, isTrashed: false } : n
+      )
+    );
+    const idsToRestore = [...selectedNoteIds];
+    setSelectedNoteIds([]);
+    toast.success(`${count} notes restored`);
+
+    try {
+      await Promise.all(
+        idsToRestore.map((id) =>
+          fetch(`/api/notes/${id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ isTrashed: false }),
+          })
+        )
+      );
+    } catch (err) {
+      console.error('Error in batch restore:', err);
+    }
+  };
+
+  // BATCH CHANGE COLOR
+  const batchChangeColor = async (color: NoteColorId): Promise<void> => {
+    if (!requireAuth('change note color')) return;
+    if (selectedNoteIds.length === 0) return;
+
+    setNotes((prev) =>
+      prev.map((n) => (selectedNoteIds.includes(n.id) ? { ...n, color } : n))
+    );
+    const ids = [...selectedNoteIds];
+    toast.success('Color updated for selected notes');
+
+    try {
+      await Promise.all(
+        ids.map((id) =>
+          fetch(`/api/notes/${id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ color }),
+          })
+        )
+      );
+    } catch (err) {
+      console.error('Error in batch color change:', err);
+    }
+  };
+
+  // BATCH TOGGLE IMPORTANT
+  const batchToggleImportant = async (mark?: boolean): Promise<void> => {
+    if (!requireAuth('mark notes as important')) return;
+    if (selectedNoteIds.length === 0) return;
+
+    const shouldMark =
+      mark !== undefined
+        ? mark
+        : notes.some(
+            (n) => selectedNoteIds.includes(n.id) && !n.isImportant
+          );
+
+    setNotes((prev) =>
+      prev.map((n) =>
+        selectedNoteIds.includes(n.id)
+          ? { ...n, isImportant: shouldMark }
+          : n
+      )
+    );
+    const ids = [...selectedNoteIds];
+    toast(
+      shouldMark
+        ? 'Selected notes marked as Important ⭐'
+        : 'Removed Important from selected notes'
+    );
+
+    try {
+      await Promise.all(
+        ids.map((id) =>
+          fetch(`/api/notes/${id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ isImportant: shouldMark }),
+          })
+        )
+      );
+    } catch (err) {
+      console.error('Error in batch toggle important:', err);
+    }
+  };
+
+  // BATCH TOGGLE PIN
+  const batchTogglePin = async (): Promise<void> => {
+    if (!requireAuth('pin notes')) return;
+    if (selectedNoteIds.length === 0) return;
+
+    const shouldPin = notes.some(
+      (n) => selectedNoteIds.includes(n.id) && !n.isPinned
+    );
+
+    setNotes((prev) =>
+      prev.map((n) =>
+        selectedNoteIds.includes(n.id) ? { ...n, isPinned: shouldPin } : n
+      )
+    );
+    const ids = [...selectedNoteIds];
+    toast(shouldPin ? 'Selected notes pinned 📌' : 'Selected notes unpinned');
+
+    try {
+      await Promise.all(
+        ids.map((id) =>
+          fetch(`/api/notes/${id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ isPinned: shouldPin }),
+          })
+        )
+      );
+    } catch (err) {
+      console.error('Error in batch pin toggle:', err);
+    }
+  };
+
   return (
     <NotesContext.Provider
       value={{
@@ -392,18 +693,31 @@ export function NotesProvider({ children }: { children: React.ReactNode }) {
         setActiveEditNote,
         allLabels,
         counts,
+        selectedNoteIds,
+        toggleSelectNote,
+        selectAll,
+        clearSelection,
         isAuthenticated,
         currentUser,
         requireAuth,
         createNote,
         updateNote,
         togglePin,
+        toggleImportant,
         archiveNote,
         unarchiveNote,
         trashNote,
         restoreNote,
         deletePermanently,
         emptyTrash,
+        batchTrash,
+        batchArchive,
+        batchUnarchive,
+        batchDeletePermanently,
+        batchRestore,
+        batchChangeColor,
+        batchToggleImportant,
+        batchTogglePin,
         changeColor,
         addLabel,
         removeLabel,

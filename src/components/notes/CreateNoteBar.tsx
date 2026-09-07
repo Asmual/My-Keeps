@@ -8,15 +8,22 @@ import {
   X,
   Tag,
   Bell,
+  Image as ImageIcon,
+  Mic,
+  Star,
+  Trash2,
 } from 'lucide-react';
 import { useNotes } from '@/hooks/useNotes';
 import { ColorPicker } from './ColorPicker';
 import { ReminderPicker } from './ReminderPicker';
+import { VoiceRecorder } from './VoiceRecorder';
 import { NOTE_COLORS } from '@/lib/constants';
 import { NoteColorId, CheckItem } from '@/types/note';
 import { cn, generateId, formatReminderDate } from '@/lib/utils';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
+import Image from 'next/image';
+import toast from 'react-hot-toast';
 
 export function CreateNoteBar() {
   const { createNote, requireAuth } = useNotes();
@@ -32,9 +39,14 @@ export function CreateNoteBar() {
   const [isChecklistMode, setIsChecklistMode] = useState(false);
   const [checklist, setChecklist] = useState<CheckItem[]>([]);
   const [newCheckItem, setNewCheckItem] = useState('');
+  const [isImportant, setIsImportant] = useState(false);
+  const [images, setImages] = useState<string[]>([]);
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const [showVoiceRecorder, setShowVoiceRecorder] = useState(false);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
 
   // Auto-resize textarea
   useEffect(() => {
@@ -45,40 +57,83 @@ export function CreateNoteBar() {
   }, [content]);
 
   const handleSaveAndClose = React.useCallback(() => {
-    const hasContent = title.trim() || content.trim() || checklist.length > 0 || reminder;
+    const hasContent =
+      title.trim() ||
+      content.trim() ||
+      checklist.length > 0 ||
+      reminder ||
+      images.length > 0 ||
+      audioUrl;
+
     if (hasContent) {
+      let noteType: 'text' | 'image' | 'voice' = 'text';
+      if (audioUrl) noteType = 'voice';
+      else if (images.length > 0) noteType = 'image';
+
       createNote({
         title: title.trim(),
         content: content.trim(),
         color,
         isPinned,
+        isImportant,
         labels,
         reminder: reminder || undefined,
         checklist: isChecklistMode && checklist.length > 0 ? checklist : undefined,
+        noteType,
+        images: images.length > 0 ? images : undefined,
+        audioUrl: audioUrl || undefined,
       });
     }
     // Reset state
     setTitle('');
     setContent('');
     setIsPinned(false);
+    setIsImportant(false);
     setColor('default');
     setReminder(null);
     setLabels([]);
     setChecklist([]);
     setIsChecklistMode(false);
     setShowLabelInput(false);
+    setImages([]);
+    setAudioUrl(null);
+    setShowVoiceRecorder(false);
     setIsExpanded(false);
   }, [
     title,
     content,
     checklist,
     reminder,
+    images,
+    audioUrl,
     createNote,
     color,
     isPinned,
+    isImportant,
     labels,
     isChecklistMode,
   ]);
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    Array.from(files).forEach((file) => {
+      if (file.size > 4 * 1024 * 1024) {
+        toast.error(`${file.name} is too large (max 4MB)`);
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        if (typeof reader.result === 'string') {
+          setImages((prev) => [...prev, reader.result as string]);
+        }
+      };
+      reader.readAsDataURL(file);
+    });
+
+    setIsExpanded(true);
+  };
 
   // Click outside to submit / close
   useEffect(() => {
@@ -160,12 +215,37 @@ export function CreateNoteBar() {
               >
                 <CheckSquare className="w-4 h-4" />
               </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  if (!requireAuth('add images')) return;
+                  imageInputRef.current?.click();
+                }}
+                className="p-2 rounded-full hover:bg-[#A7EBF2]/20 dark:hover:bg-[#26658C]/50 transition-colors text-slate-500 dark:text-[#54ACBF] cursor-pointer"
+                title="New note with image"
+              >
+                <ImageIcon className="w-4 h-4" />
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  if (!requireAuth('record voice note')) return;
+                  setShowVoiceRecorder(true);
+                  setIsExpanded(true);
+                }}
+                className="p-2 rounded-full hover:bg-[#A7EBF2]/20 dark:hover:bg-[#26658C]/50 transition-colors text-slate-500 dark:text-[#54ACBF] cursor-pointer"
+                title="New voice note"
+              >
+                <Mic className="w-4 h-4" />
+              </button>
             </div>
           </div>
         ) : (
           // Expanded State
           <div className="p-4 sm:p-5 space-y-3.5 animate-in fade-in duration-150">
-            {/* Title & Pin row */}
+            {/* Title & Pin / Star row */}
             <div className="flex items-center justify-between gap-2">
               <input
                 type="text"
@@ -175,20 +255,87 @@ export function CreateNoteBar() {
                 autoFocus
                 className="w-full bg-transparent font-semibold text-base text-[#011C40] dark:text-white placeholder-slate-400 dark:placeholder-[#A7EBF2]/50 focus:outline-none"
               />
-              <button
-                type="button"
-                onClick={() => setIsPinned((prev) => !prev)}
-                className={cn(
-                  'p-1.5 rounded-full transition-colors cursor-pointer',
-                  isPinned
-                    ? 'text-[#011C40] dark:text-[#011C40] bg-[#A7EBF2]'
-                    : 'text-slate-400 hover:text-[#011C40] dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/10'
-                )}
-                title={isPinned ? 'Unpin note' : 'Pin note'}
-              >
-                <Pin className={cn('w-4 h-4', isPinned && 'fill-current')} />
-              </button>
+              <div className="flex items-center gap-1 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setIsImportant((prev) => !prev)}
+                  className={cn(
+                    'p-1.5 rounded-full transition-colors cursor-pointer',
+                    isImportant
+                      ? 'text-amber-500 bg-amber-100 dark:bg-amber-950/60'
+                      : 'text-slate-400 hover:text-amber-400 hover:bg-black/5 dark:hover:bg-white/10'
+                  )}
+                  title={isImportant ? 'Remove from Important' : 'Mark as Important'}
+                >
+                  <Star className={cn('w-4 h-4', isImportant && 'fill-current')} />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setIsPinned((prev) => !prev)}
+                  className={cn(
+                    'p-1.5 rounded-full transition-colors cursor-pointer',
+                    isPinned
+                      ? 'text-[#011C40] dark:text-[#011C40] bg-[#A7EBF2]'
+                      : 'text-slate-400 hover:text-[#011C40] dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/10'
+                  )}
+                  title={isPinned ? 'Unpin note' : 'Pin note'}
+                >
+                  <Pin className={cn('w-4 h-4', isPinned && 'fill-current')} />
+                </button>
+              </div>
             </div>
+
+            {/* Images preview gallery */}
+            {images.length > 0 && (
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-1">
+                {images.map((img, idx) => (
+                  <div key={idx} className="relative group rounded-xl overflow-hidden aspect-video border border-black/10 dark:border-white/10">
+                    <Image
+                      src={img}
+                      alt={`Attached image ${idx + 1}`}
+                      fill
+                      className="object-cover"
+                      unoptimized
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setImages((prev) => prev.filter((_, i) => i !== idx))}
+                      className="absolute top-1 right-1 p-1 rounded-full bg-black/60 text-white hover:bg-rose-600 transition-colors opacity-0 group-hover:opacity-100 cursor-pointer"
+                      title="Remove image"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Voice Memo recording or playback */}
+            {showVoiceRecorder ? (
+              <VoiceRecorder
+                initialAudioUrl={audioUrl}
+                onSaveAudio={(url) => {
+                  setAudioUrl(url);
+                  setShowVoiceRecorder(false);
+                }}
+                onClose={() => setShowVoiceRecorder(false)}
+              />
+            ) : audioUrl ? (
+              <div className="flex items-center justify-between p-2.5 rounded-xl bg-[#54ACBF]/15 dark:bg-[#011C40] border border-[#54ACBF]/30 text-xs">
+                <span className="flex items-center gap-2 font-medium text-[#011C40] dark:text-[#A7EBF2]">
+                  <Mic className="w-3.5 h-3.5 text-[#54ACBF]" /> Voice memo attached
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setAudioUrl(null)}
+                  className="p-1 text-rose-500 hover:bg-rose-100 dark:hover:bg-rose-950/60 rounded-md transition-colors cursor-pointer"
+                  title="Remove voice note"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ) : null}
 
             {/* Content or Checklist */}
             {!isChecklistMode ? (
@@ -342,6 +489,40 @@ export function CreateNoteBar() {
                 >
                   <Tag className="w-4 h-4" />
                 </button>
+
+                {/* Add image button */}
+                <button
+                  type="button"
+                  onClick={() => imageInputRef.current?.click()}
+                  className="p-1.5 rounded-full text-slate-600 dark:text-[#A7EBF2]/80 hover:bg-[#A7EBF2]/20 dark:hover:bg-[#26658C]/50 transition-colors cursor-pointer"
+                  title="Add image"
+                >
+                  <ImageIcon className="w-4 h-4" />
+                </button>
+
+                {/* Voice note recorder button */}
+                <button
+                  type="button"
+                  onClick={() => setShowVoiceRecorder((prev) => !prev)}
+                  className={cn(
+                    'p-1.5 rounded-full transition-colors cursor-pointer',
+                    showVoiceRecorder || audioUrl
+                      ? 'text-[#011C40] bg-[#A7EBF2]'
+                      : 'text-slate-600 dark:text-[#A7EBF2]/80 hover:bg-[#A7EBF2]/20 dark:hover:bg-[#26658C]/50'
+                  )}
+                  title="Record voice note"
+                >
+                  <Mic className="w-4 h-4" />
+                </button>
+
+                <input
+                  ref={imageInputRef}
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={handleImageUpload}
+                  className="hidden"
+                />
               </div>
 
               <Button

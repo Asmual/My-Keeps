@@ -33,11 +33,15 @@ export interface Note {
   content: string;
   color: NoteColorId;
   isPinned: boolean;
+  isImportant?: boolean;
   isArchived: boolean;
   isTrashed: boolean;
   labels: string[];
   checklist?: CheckItem[];
   reminder?: string | null;
+  noteType?: 'text' | 'image' | 'voice';
+  images?: string[];
+  audioUrl?: string | null;
   createdAt: string;
   updatedAt: string;
 }

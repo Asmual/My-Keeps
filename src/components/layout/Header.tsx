@@ -19,6 +19,7 @@ import { useNotes } from '@/hooks/useNotes';
 import { useTheme } from '@/hooks/useTheme';
 import { useSession, signOut } from '@/lib/auth-client';
 import { Button } from '@/components/ui/Button';
+import { ProfileModal } from '@/components/profile/ProfileModal';
 import toast from 'react-hot-toast';
 
 export function Header() {
@@ -34,7 +35,11 @@ export function Header() {
   const { resolvedTheme, toggleTheme } = useTheme();
 
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [profileImage, setProfileImage] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+
+  const activeAvatar = profileImage ?? session?.user?.image ?? null;
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -158,9 +163,20 @@ export function Header() {
               type="button"
               onClick={() => setShowUserMenu((prev) => !prev)}
               title={session.user.name || session.user.email}
-              className="flex items-center justify-center w-8 h-8 rounded-full bg-gradient-to-tr from-[#023859] via-[#26658C] to-[#54ACBF] text-white font-semibold text-xs ring-2 ring-[#A7EBF2] dark:ring-[#26658C] shadow-sm cursor-pointer hover:opacity-90 transition-opacity"
+              className="flex items-center justify-center w-8 h-8 rounded-full overflow-hidden bg-gradient-to-tr from-[#023859] via-[#26658C] to-[#54ACBF] text-white font-semibold text-xs ring-2 ring-[#A7EBF2] dark:ring-[#26658C] shadow-sm cursor-pointer hover:opacity-90 transition-opacity"
             >
-              {userInitial}
+              {activeAvatar ? (
+                <Image
+                  src={activeAvatar}
+                  alt="User Avatar"
+                  width={32}
+                  height={32}
+                  className="w-full h-full object-cover"
+                  unoptimized
+                />
+              ) : (
+                <span>{userInitial}</span>
+              )}
             </button>
 
             {showUserMenu && (
@@ -173,6 +189,18 @@ export function Header() {
                     {session.user.email}
                   </p>
                 </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowUserMenu(false);
+                    setIsProfileModalOpen(true);
+                  }}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-[#011C40] dark:text-[#A7EBF2] hover:bg-[#A7EBF2]/20 dark:hover:bg-[#26658C]/50 transition-colors cursor-pointer mb-1"
+                >
+                  <UserIcon className="w-4 h-4 text-[#54ACBF]" />
+                  <span>View Profile</span>
+                </button>
 
                 <button
                   type="button"
@@ -210,6 +238,15 @@ export function Header() {
           </div>
         )}
       </div>
+
+      <ProfileModal
+        isOpen={isProfileModalOpen}
+        onClose={() => setIsProfileModalOpen(false)}
+        onProfileUpdated={(updated) => {
+          if (updated.image) setProfileImage(updated.image);
+          router.refresh();
+        }}
+      />
     </header>
   );
 }

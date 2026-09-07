@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   Pin,
   Archive,
@@ -10,7 +10,12 @@ import {
   Tag,
   X,
   Bell,
+  Check,
+  Star,
+  Play,
+  Pause,
 } from 'lucide-react';
+import Image from 'next/image';
 import { Note } from '@/types/note';
 import { NOTE_COLORS } from '@/lib/constants';
 import { useNotes } from '@/hooks/useNotes';
@@ -28,6 +33,7 @@ interface NoteCardProps {
 export function NoteCard({ note, isTrashView = false }: NoteCardProps) {
   const {
     togglePin,
+    toggleImportant,
     archiveNote,
     unarchiveNote,
     trashNote,
@@ -40,11 +46,17 @@ export function NoteCard({ note, isTrashView = false }: NoteCardProps) {
     updateNote,
     requireAuth,
     setReminder,
+    selectedNoteIds,
+    toggleSelectNote,
   } = useNotes();
 
   const [showTagInput, setShowTagInput] = useState(false);
   const [tagInputValue, setTagInputValue] = useState('');
   const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = useState(false);
+  const [isPlayingAudio, setIsPlayingAudio] = useState(false);
+  const audioRef = React.useRef<HTMLAudioElement | null>(null);
+
+  const isSelected = selectedNoteIds.includes(note.id);
 
   const colorConfig = NOTE_COLORS[note.color] || NOTE_COLORS.default;
 
@@ -83,11 +95,61 @@ export function NoteCard({ note, isTrashView = false }: NoteCardProps) {
         colorConfig.bgDark,
         colorConfig.borderLight,
         colorConfig.borderDark,
-        'hover:shadow-lg hover:-translate-y-1 shadow-xs hover:border-[#54ACBF] dark:hover:border-[#54ACBF]'
+        'hover:shadow-lg hover:-translate-y-1 shadow-xs',
+        note.isImportant
+          ? 'border-amber-400 dark:border-amber-400/80 ring-1 ring-amber-400/50 shadow-md'
+          : 'hover:border-[#54ACBF] dark:hover:border-[#54ACBF]',
+        isSelected &&
+          'ring-2 ring-[#54ACBF] border-[#54ACBF] dark:border-[#54ACBF] shadow-xl'
       )}
     >
-      {/* Top Header: Title & Pin Button */}
+      {/* Selection tick (Google Keep style) */}
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          toggleSelectNote(note.id);
+        }}
+        title={isSelected ? 'Deselect note' : 'Select note'}
+        className={cn(
+          'absolute -top-2 -left-2 z-20 w-6 h-6 rounded-full flex items-center justify-center border shadow-md transition-all cursor-pointer',
+          isSelected
+            ? 'opacity-100 bg-[#023859] dark:bg-[#54ACBF] text-white dark:text-[#011C40] border-[#54ACBF] scale-105'
+            : 'opacity-0 group-hover:opacity-100 bg-white dark:bg-[#023859] text-slate-400 hover:text-[#011C40] dark:hover:text-white border-slate-300 dark:border-[#26658C]'
+        )}
+      >
+        <Check className={cn('w-3.5 h-3.5', isSelected ? 'stroke-[3]' : 'stroke-2')} />
+      </button>
+
       <div>
+        {/* Attached images preview */}
+        {note.images && note.images.length > 0 && (
+          <div className="mb-3 -mx-4 sm:-mx-5 -mt-4 sm:-mt-5 rounded-t-2xl overflow-hidden border-b border-black/5 dark:border-white/10">
+            <div
+              className={cn(
+                'grid gap-0.5',
+                note.images.length === 1 ? 'grid-cols-1' : 'grid-cols-2'
+              )}
+            >
+              {note.images.slice(0, 4).map((img, idx) => (
+                <div
+                  key={idx}
+                  className="relative aspect-video w-full bg-slate-100 dark:bg-black/20"
+                >
+                  <Image
+                    src={img}
+                    alt={`Note attachment ${idx + 1}`}
+                    fill
+                    className="object-cover"
+                    unoptimized
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Top Header: Title & Action Icons (Pin & Important) */}
         <div className="flex items-start justify-between gap-2 mb-2">
           {note.title ? (
             <h3 className="font-semibold text-[#011C40] dark:text-white text-base leading-snug break-words flex-1">
@@ -98,24 +160,94 @@ export function NoteCard({ note, isTrashView = false }: NoteCardProps) {
           )}
 
           {!isTrashView && (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                togglePin(note.id);
-              }}
-              title={note.isPinned ? 'Unpin note' : 'Pin note'}
-              className={cn(
-                'p-1.5 rounded-full transition-all cursor-pointer',
-                note.isPinned
-                  ? 'text-[#011C40] bg-[#A7EBF2] shadow-xs'
-                  : 'text-slate-400 opacity-0 group-hover:opacity-100 hover:text-[#011C40] dark:hover:text-[#A7EBF2] hover:bg-[#A7EBF2]/20 dark:hover:bg-[#26658C]/40'
-              )}
-            >
-              <Pin className={cn('w-4 h-4', note.isPinned && 'fill-current')} />
-            </button>
+            <div className="flex items-center gap-0.5 shrink-0">
+              {/* Important Star button */}
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleImportant(note.id);
+                }}
+                title={
+                  note.isImportant
+                    ? 'Remove from Important'
+                    : 'Mark as Important'
+                }
+                className={cn(
+                  'p-1.5 rounded-full transition-all cursor-pointer',
+                  note.isImportant
+                    ? 'text-amber-500 hover:bg-amber-400/20'
+                    : 'text-slate-400 opacity-0 group-hover:opacity-100 hover:text-amber-400 hover:bg-amber-400/15'
+                )}
+              >
+                <Star
+                  className={cn(
+                    'w-4 h-4',
+                    note.isImportant && 'fill-amber-400 text-amber-500'
+                  )}
+                />
+              </button>
+
+              {/* Pin button: strictly visible on card hover */}
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  togglePin(note.id);
+                }}
+                title={note.isPinned ? 'Unpin note' : 'Pin note'}
+                className={cn(
+                  'p-1.5 rounded-full transition-all cursor-pointer opacity-0 group-hover:opacity-100',
+                  note.isPinned
+                    ? 'text-[#011C40] bg-[#A7EBF2] shadow-xs'
+                    : 'text-slate-400 hover:text-[#011C40] dark:hover:text-[#A7EBF2] hover:bg-[#A7EBF2]/20 dark:hover:bg-[#26658C]/40'
+                )}
+              >
+                <Pin
+                  className={cn('w-4 h-4', note.isPinned && 'fill-current')}
+                />
+              </button>
+            </div>
           )}
         </div>
+
+        {/* Voice Note audio player */}
+        {note.audioUrl && (
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="mb-3 p-2 rounded-xl bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/10 flex items-center gap-2.5 text-xs"
+          >
+            <button
+              type="button"
+              onClick={() => {
+                if (!note.audioUrl) return;
+                if (!audioRef.current) {
+                  const audio = new Audio(note.audioUrl);
+                  audio.onended = () => setIsPlayingAudio(false);
+                  audioRef.current = audio;
+                }
+                if (isPlayingAudio) {
+                  audioRef.current.pause();
+                  setIsPlayingAudio(false);
+                } else {
+                  audioRef.current.play();
+                  setIsPlayingAudio(true);
+                }
+              }}
+              className="p-1.5 rounded-full bg-[#54ACBF] text-white hover:bg-[#26658C] transition-colors cursor-pointer"
+              title={isPlayingAudio ? 'Pause' : 'Play voice memo'}
+            >
+              {isPlayingAudio ? (
+                <Pause className="w-3 h-3 fill-current" />
+              ) : (
+                <Play className="w-3 h-3 fill-current ml-0.5" />
+              )}
+            </button>
+            <span className="font-medium text-[#011C40] dark:text-[#A7EBF2] text-[11px]">
+              {isPlayingAudio ? 'Playing voice note...' : 'Voice memo'}
+            </span>
+          </div>
+        )}
 
         {/* Content Body */}
         {note.content && (

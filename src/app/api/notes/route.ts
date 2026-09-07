@@ -25,13 +25,25 @@ export async function GET(request: NextRequest) {
       query.isArchived = false;
       query.isTrashed = false;
       query.reminder = { $ne: null };
+    } else if (filter === 'important') {
+      query.isArchived = false;
+      query.isTrashed = false;
+      query.isImportant = true;
+    } else if (filter === 'image') {
+      query.isArchived = false;
+      query.isTrashed = false;
+      query.$or = [{ noteType: 'image' }, { 'images.0': { $exists: true } }];
+    } else if (filter === 'voice') {
+      query.isArchived = false;
+      query.isTrashed = false;
+      query.$or = [{ noteType: 'voice' }, { audioUrl: { $ne: null } }];
     } else {
       // Default active notes
       query.isArchived = false;
       query.isTrashed = false;
     }
 
-    const rawNotes = await NoteModel.find(query).sort({ isPinned: -1, updatedAt: -1 }).lean();
+    const rawNotes = await NoteModel.find(query).sort({ isPinned: -1, isImportant: -1, updatedAt: -1 }).lean();
 
     const notes = rawNotes.map((n) => {
       const doc = (n as unknown) as Record<string, unknown>;
@@ -62,11 +74,15 @@ export async function POST(request: NextRequest) {
       content: body.content || '',
       color: body.color || 'default',
       isPinned: Boolean(body.isPinned),
+      isImportant: Boolean(body.isImportant),
       isArchived: Boolean(body.isArchived),
       isTrashed: false,
       labels: body.labels || [],
       checklist: body.checklist || [],
       reminder: body.reminder || null,
+      noteType: body.noteType || 'text',
+      images: body.images || [],
+      audioUrl: body.audioUrl || null,
       userId: body.userId || null,
     });
 

@@ -6,6 +6,7 @@ export interface INoteDocument extends Document {
   content: string;
   color: NoteColorId;
   isPinned: boolean;
+  isImportant: boolean;
   isArchived: boolean;
   isTrashed: boolean;
   labels: string[];
@@ -15,6 +16,9 @@ export interface INoteDocument extends Document {
     completed: boolean;
   }[];
   reminder?: Date | null;
+  noteType: 'text' | 'image' | 'voice';
+  images: string[];
+  audioUrl?: string | null;
   userId?: string | null;
   createdAt: Date;
   updatedAt: Date;
@@ -51,11 +55,15 @@ const NoteSchema = new Schema<INoteDocument>(
       ],
     },
     isPinned: { type: Boolean, default: false, index: true },
+    isImportant: { type: Boolean, default: false, index: true },
     isArchived: { type: Boolean, default: false, index: true },
     isTrashed: { type: Boolean, default: false, index: true },
     labels: [{ type: String, trim: true }],
     checklist: [CheckItemSchema],
     reminder: { type: Date, default: null },
+    noteType: { type: String, default: 'text', enum: ['text', 'image', 'voice'], index: true },
+    images: [{ type: String }],
+    audioUrl: { type: String, default: null },
     userId: { type: String, default: null, index: true },
   },
   {

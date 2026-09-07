@@ -3,13 +3,14 @@
 import React from 'react';
 import { Note } from '@/types/note';
 import { NoteCard } from './NoteCard';
+import { BatchActionBar } from './BatchActionBar';
 import { useNotes } from '@/hooks/useNotes';
 import { EmptyState } from './EmptyState';
 
 interface NoteGridProps {
   notes: Note[];
   isTrashView?: boolean;
-  emptyType?: 'notes' | 'archive' | 'trash' | 'reminders';
+  emptyType?: 'notes' | 'archive' | 'trash' | 'reminders' | 'important' | 'imageNotes' | 'voiceNotes';
 }
 
 export function NoteGrid({
@@ -68,9 +69,17 @@ export function NoteGrid({
     return <EmptyState type={emptyType} />;
   }
 
-  // Split into pinned and others if not in Trash view
-  const pinnedNotes = !isTrashView ? filteredNotes.filter((n) => n.isPinned) : [];
-  const otherNotes = !isTrashView ? filteredNotes.filter((n) => !n.isPinned) : filteredNotes;
+  // Split into pinned and others if not in Trash view, prioritizing Important notes
+  const sortNotes = (list: Note[]) => {
+    return [...list].sort((a, b) => {
+      if (a.isImportant && !b.isImportant) return -1;
+      if (!a.isImportant && b.isImportant) return 1;
+      return 0;
+    });
+  };
+
+  const pinnedNotes = !isTrashView ? sortNotes(filteredNotes.filter((n) => n.isPinned)) : [];
+  const otherNotes = !isTrashView ? sortNotes(filteredNotes.filter((n) => !n.isPinned)) : filteredNotes;
 
   const gridContainerClass =
     viewMode === 'grid'
@@ -78,7 +87,14 @@ export function NoteGrid({
       : 'max-w-2xl mx-auto flex flex-col gap-3.5';
 
   return (
-    <div className="w-full space-y-8 pb-16">
+    <div className="w-full space-y-8 pb-16 relative">
+      {/* Floating Batch Action Bar */}
+      <BatchActionBar
+        isTrashView={isTrashView}
+        isArchiveView={emptyType === 'archive'}
+        visibleNoteIds={filteredNotes.map((n) => n.id)}
+      />
+
       {/* Pinned Section */}
       {pinnedNotes.length > 0 && (
         <div>

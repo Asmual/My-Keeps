@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
@@ -11,13 +11,12 @@ import {
   Tag,
   Hash,
   Lock,
-  Edit3,
-  Plus,
-  X,
+  Star,
+  Image as ImageIcon,
+  Mic,
 } from 'lucide-react';
 import { useNotes } from '@/hooks/useNotes';
 import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/Button';
 
 export function Sidebar() {
   const pathname = usePathname();
@@ -29,28 +28,43 @@ export function Sidebar() {
     setSelectedLabel,
     isAuthenticated,
     currentUser,
-    requireAuth,
-    notes,
-    addLabel,
   } = useNotes();
-
-  const [isEditLabelsOpen, setIsEditLabelsOpen] = useState(false);
-  const [newLabelInput, setNewLabelInput] = useState('');
 
   const navItems = [
     {
-      label: 'Notes',
+      label: 'Text Note',
       href: '/',
       icon: StickyNote,
       count: counts.active,
       active: pathname === '/' && !selectedLabel,
     },
     {
-      label: 'Reminders',
+      label: 'Image Note',
+      href: '/image-notes',
+      icon: ImageIcon,
+      count: counts.imageNotes,
+      active: pathname === '/image-notes',
+    },
+    {
+      label: 'Voice Note',
+      href: '/voice-notes',
+      icon: Mic,
+      count: counts.voiceNotes,
+      active: pathname === '/voice-notes',
+    },
+    {
+      label: 'Notes Reminders',
       href: '/reminders',
       icon: Bell,
       count: counts.reminders,
       active: pathname === '/reminders',
+    },
+    {
+      label: 'Important',
+      href: '/important',
+      icon: Star,
+      count: counts.important,
+      active: pathname === '/important',
     },
     {
       label: 'Archive',
@@ -67,19 +81,6 @@ export function Sidebar() {
       active: pathname === '/trash',
     },
   ];
-
-  const handleCreateLabel = (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    if (!requireAuth('create labels')) return;
-    const trimmed = newLabelInput.trim();
-    if (!trimmed) return;
-
-    // Attach to first active note or just add to labels list
-    if (notes.length > 0) {
-      addLabel(notes[0].id, trimmed);
-    }
-    setNewLabelInput('');
-  };
 
   return (
     <>
@@ -143,30 +144,6 @@ export function Sidebar() {
                 </Link>
               );
             })}
-
-            {/* "Edit Labels" Navigation Link */}
-            <button
-              type="button"
-              onClick={() => {
-                if (!requireAuth('edit labels')) return;
-                setIsEditLabelsOpen(true);
-              }}
-              className={cn(
-                'w-full flex items-center gap-3.5 px-3.5 py-2.5 rounded-2xl text-sm font-medium transition-all group cursor-pointer text-left',
-                'text-slate-600 dark:text-[#A7EBF2]/70 hover:bg-[#A7EBF2]/20 dark:hover:bg-[#023859]/60 hover:text-[#011C40] dark:hover:text-white'
-              )}
-              title={!sidebarOpen ? 'Edit Labels' : undefined}
-            >
-              <div
-                className={cn(
-                  'flex items-center justify-center transition-transform group-hover:scale-105',
-                  !sidebarOpen && 'w-full'
-                )}
-              >
-                <Edit3 className="w-5 h-5 text-slate-500 dark:text-[#54ACBF]" />
-              </div>
-              {sidebarOpen && <span className="flex-1 truncate">Edit Labels</span>}
-            </button>
           </nav>
 
           {/* Labels Section */}
@@ -248,79 +225,6 @@ export function Sidebar() {
           </div>
         )}
       </aside>
-
-      {/* Edit Labels Modal */}
-      {isEditLabelsOpen && (
-        <div
-          onClick={() => setIsEditLabelsOpen(false)}
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150"
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-sm rounded-3xl p-6 bg-white dark:bg-[#023859] border border-[#A7EBF2] dark:border-[#26658C] shadow-2xl space-y-4"
-          >
-            <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-[#26658C]">
-              <h3 className="font-bold text-base text-[#011C40] dark:text-white flex items-center gap-2">
-                <Edit3 className="w-4 h-4 text-[#54ACBF]" />
-                Edit Labels
-              </h3>
-              <button
-                type="button"
-                onClick={() => setIsEditLabelsOpen(false)}
-                className="p-1 rounded-full text-slate-400 hover:text-slate-600 dark:hover:text-white"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            {/* Create Label Input */}
-            <form onSubmit={handleCreateLabel} className="flex items-center gap-2">
-              <input
-                type="text"
-                value={newLabelInput}
-                onChange={(e) => setNewLabelInput(e.target.value)}
-                placeholder="Create new label..."
-                className="flex-1 h-9 px-3 text-xs rounded-xl bg-slate-100 dark:bg-[#011C40] border border-slate-200 dark:border-[#26658C] text-[#011C40] dark:text-white focus:outline-none focus:ring-1 focus:ring-[#54ACBF]"
-              />
-              <Button type="submit" size="sm" variant="primary">
-                <Plus className="w-3.5 h-3.5 mr-1" /> Add
-              </Button>
-            </form>
-
-            {/* Current Labels List */}
-            <div className="max-h-48 overflow-y-auto space-y-1 pt-1">
-              {allLabels.length === 0 ? (
-                <p className="text-xs text-slate-400 dark:text-[#A7EBF2]/60 italic py-2 text-center">
-                  No labels yet. Add one above!
-                </p>
-              ) : (
-                allLabels.map((lbl) => (
-                  <div
-                    key={lbl}
-                    className="flex items-center justify-between px-3 py-2 rounded-xl bg-slate-50 dark:bg-[#011C40]/60 border border-slate-200/60 dark:border-[#26658C]/40 text-xs font-medium text-[#011C40] dark:text-[#A7EBF2]"
-                  >
-                    <span className="flex items-center gap-2">
-                      <Hash className="w-3.5 h-3.5 text-[#54ACBF]" />
-                      {lbl}
-                    </span>
-                  </div>
-                ))
-              )}
-            </div>
-
-            <div className="pt-2 flex justify-end">
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={() => setIsEditLabelsOpen(false)}
-                className="px-5"
-              >
-                Done
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
     </>
   );
 }
