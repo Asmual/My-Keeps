@@ -54,7 +54,7 @@ export function NoteCard({ note, isTrashView = false }: NoteCardProps) {
   const [tagInputValue, setTagInputValue] = useState('');
   const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = useState(false);
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
-  const audioRef = React.useRef<HTMLAudioElement | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const isSelected = selectedNoteIds.includes(note.id);
 

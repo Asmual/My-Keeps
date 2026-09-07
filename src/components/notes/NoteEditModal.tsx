@@ -51,7 +51,7 @@ function NoteEditModalContent({ note, onClose }: NoteEditModalContentProps) {
   const [showLabelInput, setShowLabelInput] = useState(false);
   const [isConfirmTrashOpen, setIsConfirmTrashOpen] = useState(false);
 
-  const imageInputRef = React.useRef<HTMLInputElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
 
   const handleSaveAndClose = useCallback(() => {
     let noteType: 'text' | 'image' | 'voice' = 'text';
