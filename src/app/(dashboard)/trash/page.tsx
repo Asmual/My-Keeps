@@ -1,13 +1,15 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useNotes } from '@/hooks/useNotes';
 import { NoteGrid } from '@/components/notes/NoteGrid';
 import { Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
+import { ConfirmModal } from '@/components/ui/ConfirmModal';
 
 export default function TrashPage() {
   const { notes, emptyTrash } = useNotes();
+  const [isConfirmEmptyOpen, setIsConfirmEmptyOpen] = useState(false);
 
   const trashedNotes = notes.filter((n) => n.isTrashed);
 
@@ -28,7 +30,7 @@ export default function TrashPage() {
           <Button
             variant="danger"
             size="sm"
-            onClick={emptyTrash}
+            onClick={() => setIsConfirmEmptyOpen(true)}
             className="self-start sm:self-auto"
           >
             Empty Trash Now
@@ -37,6 +39,16 @@ export default function TrashPage() {
       </div>
 
       <NoteGrid notes={trashedNotes} isTrashView={true} emptyType="trash" />
+
+      <ConfirmModal
+        isOpen={isConfirmEmptyOpen}
+        onClose={() => setIsConfirmEmptyOpen(false)}
+        onConfirm={emptyTrash}
+        title="Empty trash?"
+        description="All items in Trash will be permanently deleted. This action cannot be undone."
+        confirmText="Empty Trash"
+        variant="danger"
+      />
     </div>
   );
 }

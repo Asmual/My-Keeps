@@ -17,6 +17,7 @@ import { useNotes } from '@/hooks/useNotes';
 import { ColorPicker } from './ColorPicker';
 import { ReminderPicker } from './ReminderPicker';
 import { Badge } from '@/components/ui/Badge';
+import { ConfirmModal } from '@/components/ui/ConfirmModal';
 import { cn, formatDate, formatReminderDate } from '@/lib/utils';
 
 interface NoteCardProps {
@@ -43,6 +44,7 @@ export function NoteCard({ note, isTrashView = false }: NoteCardProps) {
 
   const [showTagInput, setShowTagInput] = useState(false);
   const [tagInputValue, setTagInputValue] = useState('');
+  const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = useState(false);
 
   const colorConfig = NOTE_COLORS[note.color] || NOTE_COLORS.default;
 
@@ -315,7 +317,7 @@ export function NoteCard({ note, isTrashView = false }: NoteCardProps) {
             </button>
             <button
               type="button"
-              onClick={() => deletePermanently(note.id)}
+              onClick={() => setIsConfirmDeleteOpen(true)}
               title="Delete permanently"
               className="p-1.5 rounded-full text-rose-500 hover:bg-rose-100 dark:hover:bg-rose-950/60 transition-colors cursor-pointer"
             >
@@ -324,6 +326,16 @@ export function NoteCard({ note, isTrashView = false }: NoteCardProps) {
           </div>
         )}
       </div>
+
+      <ConfirmModal
+        isOpen={isConfirmDeleteOpen}
+        onClose={() => setIsConfirmDeleteOpen(false)}
+        onConfirm={() => deletePermanently(note.id)}
+        title="Delete note permanently?"
+        description="This action cannot be undone. Are you sure you want to permanently delete this note?"
+        confirmText="Delete"
+        variant="danger"
+      />
     </div>
   );
 }

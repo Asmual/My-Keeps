@@ -17,6 +17,7 @@ import { ColorPicker } from './ColorPicker';
 import { ReminderPicker } from './ReminderPicker';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
+import { ConfirmModal } from '@/components/ui/ConfirmModal';
 import { cn, generateId, formatReminderDate } from '@/lib/utils';
 import { CheckItem, Note, NoteColorId } from '@/types/note';
 
@@ -38,6 +39,7 @@ function NoteEditModalContent({ note, onClose }: NoteEditModalContentProps) {
   const [newCheckItem, setNewCheckItem] = useState('');
   const [newLabelInput, setNewLabelInput] = useState('');
   const [showLabelInput, setShowLabelInput] = useState(false);
+  const [isConfirmTrashOpen, setIsConfirmTrashOpen] = useState(false);
 
   const handleSaveAndClose = useCallback(() => {
     updateNote(note.id, {
@@ -91,231 +93,246 @@ function NoteEditModalContent({ note, onClose }: NoteEditModalContentProps) {
   const colorConfig = NOTE_COLORS[color] || NOTE_COLORS.default;
 
   return (
-    <div
-      onClick={handleSaveAndClose}
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#011C40]/60 backdrop-blur-xs animate-in fade-in duration-150"
-    >
+    <>
       <div
-        onClick={(e) => e.stopPropagation()}
-        className={cn(
-          'w-full max-w-xl rounded-3xl p-6 sm:p-7 shadow-2xl border transition-all duration-200 animate-in zoom-in-95',
-          colorConfig.bgLight,
-          colorConfig.bgDark,
-          colorConfig.borderLight,
-          colorConfig.borderDark
-        )}
+        onClick={handleSaveAndClose}
+        className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-[#011C40]/60 backdrop-blur-xs animate-in fade-in duration-150"
       >
-        {/* Header: Title & Pin */}
-        <div className="flex items-center justify-between gap-3 mb-4">
-          <input
-            type="text"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="Title"
-            className="w-full bg-transparent font-semibold text-lg text-[#011C40] dark:text-white placeholder-slate-400 dark:placeholder-[#A7EBF2]/50 focus:outline-none"
-          />
-          <button
-            type="button"
-            onClick={() => setIsPinned((prev) => !prev)}
-            className={cn(
-              'p-2 rounded-full transition-colors cursor-pointer',
-              isPinned
-                ? 'text-[#011C40] bg-[#A7EBF2]'
-                : 'text-slate-400 hover:text-[#011C40] dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/10'
-            )}
-            title={isPinned ? 'Unpin note' : 'Pin note'}
-          >
-            <Pin className={cn('w-5 h-5', isPinned && 'fill-current')} />
-          </button>
-        </div>
-
-        {/* Content text */}
-        <textarea
-          value={content}
-          onChange={(e) => setContent(e.target.value)}
-          placeholder="Note details..."
-          rows={6}
-          className="w-full bg-transparent text-sm text-[#011C40] dark:text-slate-100 placeholder-slate-400 dark:placeholder-[#A7EBF2]/50 resize-none focus:outline-none mb-4 leading-relaxed"
-        />
-
-        {/* Checklist */}
-        {checklist.length > 0 && (
-          <div className="space-y-2 mb-4 border-t border-black/5 dark:border-white/10 pt-3">
-            {checklist.map((item, idx) => (
-              <div key={item.id} className="flex items-center gap-2 group text-sm">
-                <input
-                  type="checkbox"
-                  checked={item.completed}
-                  onChange={() =>
-                    setChecklist((prev) =>
-                      prev.map((c, i) =>
-                        i === idx ? { ...c, completed: !c.completed } : c
-                      )
-                    )
-                  }
-                  className="rounded accent-[#023859] dark:accent-[#54ACBF] cursor-pointer"
-                />
-                <span
-                  className={cn(
-                    'flex-1 text-[#011C40] dark:text-white',
-                    item.completed && 'line-through text-slate-400 dark:text-[#A7EBF2]/50'
-                  )}
-                >
-                  {item.text}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setChecklist((prev) => prev.filter((_, i) => i !== idx))}
-                  className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-white cursor-pointer"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            ))}
-            <div className="flex items-center gap-2 pt-1">
-              <Plus className="w-4 h-4 text-[#54ACBF]" />
-              <input
-                type="text"
-                value={newCheckItem}
-                onChange={(e) => setNewCheckItem(e.target.value)}
-                onKeyDown={handleAddCheckItem}
-                placeholder="Add checklist item..."
-                className="w-full bg-transparent text-sm text-[#011C40] dark:text-white placeholder-slate-400 dark:placeholder-[#A7EBF2]/50 focus:outline-none"
-              />
-            </div>
-          </div>
-        )}
-
-        {/* Reminder preview */}
-        {reminder && (
-          <div className="flex flex-wrap gap-1.5 mb-3">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-[#54ACBF]/15 dark:bg-[#54ACBF]/25 text-[#011C40] dark:text-[#A7EBF2] border border-[#54ACBF]/40 shadow-xs">
-              <Bell className="w-3.5 h-3.5 text-[#54ACBF] shrink-0" />
-              <span>{formatReminderDate(reminder)}</span>
-              <button
-                type="button"
-                onClick={() => setReminder(null)}
-                className="ml-1 p-0.5 rounded-full hover:bg-black/10 dark:hover:bg-white/10 text-slate-500 hover:text-rose-500 cursor-pointer transition-colors"
-                title="Remove reminder"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            </span>
-          </div>
-        )}
-
-        {/* Labels list */}
-        {labels.length > 0 && (
-          <div className="flex flex-wrap gap-1.5 mb-4">
-            {labels.map((l) => (
-              <Badge
-                key={l}
-                onRemove={() => setLabels((prev) => prev.filter((item) => item !== l))}
-              >
-                {l}
-              </Badge>
-            ))}
-          </div>
-        )}
-
-        {/* Add Label inline - strictly contained inside modal container */}
-        {showLabelInput && (
-          <div className="flex items-center gap-2 w-full max-w-full mb-4">
+        <div
+          onClick={(e) => e.stopPropagation()}
+          className={cn(
+            'w-full max-w-xl max-h-[85vh] sm:max-h-[90vh] flex flex-col rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-2xl border transition-all duration-200 animate-in zoom-in-95 overflow-hidden',
+            colorConfig.bgLight,
+            colorConfig.bgDark,
+            colorConfig.borderLight,
+            colorConfig.borderDark
+          )}
+        >
+          {/* Header: Title & Pin (Fixed at top) */}
+          <div className="flex items-center justify-between gap-3 mb-3 shrink-0">
             <input
               type="text"
-              value={newLabelInput}
-              onChange={(e) => setNewLabelInput(e.target.value)}
-              onKeyDown={handleAddLabel}
-              placeholder="Tag name..."
-              autoFocus
-              className="flex-1 min-w-0 px-3 py-1.5 text-xs rounded-xl bg-slate-100 dark:bg-[#011C40] border border-slate-200 dark:border-[#26658C] text-[#011C40] dark:text-white focus:outline-none focus:ring-1 focus:ring-[#54ACBF]"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Title"
+              className="w-full min-w-0 bg-transparent font-semibold text-lg text-[#011C40] dark:text-white placeholder-slate-400 dark:placeholder-[#A7EBF2]/50 focus:outline-none"
             />
-            <Button size="sm" variant="primary" onClick={() => handleAddLabel()} className="shrink-0">
-              Add
-            </Button>
             <button
               type="button"
-              onClick={() => {
-                setShowLabelInput(false);
-                setNewLabelInput('');
-              }}
-              className="shrink-0 p-1 text-slate-400 hover:text-slate-600 dark:hover:text-white cursor-pointer"
-              title="Cancel"
+              onClick={() => setIsPinned((prev) => !prev)}
+              className={cn(
+                'p-2 rounded-full transition-colors cursor-pointer shrink-0',
+                isPinned
+                  ? 'text-[#011C40] bg-[#A7EBF2]'
+                  : 'text-slate-400 hover:text-[#011C40] dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/10'
+              )}
+              title={isPinned ? 'Unpin note' : 'Pin note'}
             >
-              <X className="w-4 h-4" />
+              <Pin className={cn('w-5 h-5', isPinned && 'fill-current')} />
             </button>
           </div>
-        )}
 
-        {/* Footer toolbar (Luna palette) */}
-        <div className="flex items-center justify-between pt-4 border-t border-black/5 dark:border-white/10">
-          <div className="flex items-center gap-1.5">
-            <ReminderPicker
-              currentReminder={reminder}
-              onSelectReminder={setReminder}
+          {/* Scrollable Middle Content (Text, Checklist, Reminder, Labels) */}
+          <div className="flex-1 overflow-y-auto pr-1 sm:pr-2 space-y-3 min-h-0">
+            {/* Content text */}
+            <textarea
+              value={content}
+              onChange={(e) => setContent(e.target.value)}
+              placeholder="Note details..."
+              rows={4}
+              className="w-full min-w-0 bg-transparent text-sm text-[#011C40] dark:text-slate-100 placeholder-slate-400 dark:placeholder-[#A7EBF2]/50 resize-none focus:outline-none leading-relaxed"
             />
 
-            <ColorPicker currentColor={color} onSelectColor={setColor} />
-
-            <button
-              type="button"
-              onClick={() => setShowLabelInput((prev) => !prev)}
-              title="Add tag"
-              className="p-1.5 rounded-full text-slate-600 dark:text-[#A7EBF2]/80 hover:bg-[#A7EBF2]/20 dark:hover:bg-[#26658C]/50 transition-colors cursor-pointer"
-            >
-              <Tag className="w-4 h-4" />
-            </button>
-
-            {note.isArchived ? (
-              <button
-                type="button"
-                onClick={() => {
-                  unarchiveNote(note.id);
-                  onClose();
-                }}
-                title="Unarchive"
-                className="p-1.5 rounded-full text-slate-600 dark:text-[#A7EBF2]/80 hover:bg-[#A7EBF2]/20 dark:hover:bg-[#26658C]/50 transition-colors cursor-pointer"
-              >
-                <ArchiveRestore className="w-4 h-4" />
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={() => {
-                  archiveNote(note.id);
-                  onClose();
-                }}
-                title="Archive"
-                className="p-1.5 rounded-full text-slate-600 dark:text-[#A7EBF2]/80 hover:bg-[#A7EBF2]/20 dark:hover:bg-[#26658C]/50 transition-colors cursor-pointer"
-              >
-                <Archive className="w-4 h-4" />
-              </button>
+            {/* Checklist */}
+            {checklist.length > 0 && (
+              <div className="space-y-2 border-t border-black/5 dark:border-white/10 pt-3">
+                {checklist.map((item, idx) => (
+                  <div key={item.id} className="flex items-center gap-2 group text-sm">
+                    <input
+                      type="checkbox"
+                      checked={item.completed}
+                      onChange={() =>
+                        setChecklist((prev) =>
+                          prev.map((c, i) =>
+                            i === idx ? { ...c, completed: !c.completed } : c
+                          )
+                        )
+                      }
+                      className="rounded accent-[#023859] dark:accent-[#54ACBF] cursor-pointer"
+                    />
+                    <span
+                      className={cn(
+                        'flex-1 min-w-0 text-[#011C40] dark:text-white break-words',
+                        item.completed && 'line-through text-slate-400 dark:text-[#A7EBF2]/50'
+                      )}
+                    >
+                      {item.text}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setChecklist((prev) => prev.filter((_, i) => i !== idx))}
+                      className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-white cursor-pointer shrink-0"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ))}
+                <div className="flex items-center gap-2 pt-1">
+                  <Plus className="w-4 h-4 text-[#54ACBF] shrink-0" />
+                  <input
+                    type="text"
+                    value={newCheckItem}
+                    onChange={(e) => setNewCheckItem(e.target.value)}
+                    onKeyDown={handleAddCheckItem}
+                    placeholder="Add checklist item..."
+                    className="w-full min-w-0 bg-transparent text-sm text-[#011C40] dark:text-white placeholder-slate-400 dark:placeholder-[#A7EBF2]/50 focus:outline-none"
+                  />
+                </div>
+              </div>
             )}
 
-            <button
-              type="button"
-              onClick={() => {
-                trashNote(note.id);
-                onClose();
-              }}
-              title="Move to trash"
-              className="p-1.5 rounded-full text-slate-600 dark:text-[#A7EBF2]/80 hover:bg-rose-100 dark:hover:bg-rose-950/60 hover:text-rose-600 transition-colors cursor-pointer"
-            >
-              <Trash2 className="w-4 h-4" />
-            </button>
+            {/* Reminder preview */}
+            {reminder && (
+              <div className="flex flex-wrap gap-1.5">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-[#54ACBF]/15 dark:bg-[#54ACBF]/25 text-[#011C40] dark:text-[#A7EBF2] border border-[#54ACBF]/40 shadow-xs">
+                  <Bell className="w-3.5 h-3.5 text-[#54ACBF] shrink-0" />
+                  <span>{formatReminderDate(reminder)}</span>
+                  <button
+                    type="button"
+                    onClick={() => setReminder(null)}
+                    className="ml-1 p-0.5 rounded-full hover:bg-black/10 dark:hover:bg-white/10 text-slate-500 hover:text-rose-500 cursor-pointer transition-colors"
+                    title="Remove reminder"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </span>
+              </div>
+            )}
+
+            {/* Labels list */}
+            {labels.length > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {labels.map((l) => (
+                  <Badge
+                    key={l}
+                    onRemove={() => setLabels((prev) => prev.filter((item) => item !== l))}
+                  >
+                    {l}
+                  </Badge>
+                ))}
+              </div>
+            )}
+
+            {/* Add Label inline - strictly contained inside modal container */}
+            {showLabelInput && (
+              <div className="flex items-center gap-2 w-full max-w-full">
+                <input
+                  type="text"
+                  value={newLabelInput}
+                  onChange={(e) => setNewLabelInput(e.target.value)}
+                  onKeyDown={handleAddLabel}
+                  placeholder="Tag name..."
+                  autoFocus
+                  className="flex-1 min-w-0 px-3 py-1.5 text-xs rounded-xl bg-slate-100 dark:bg-[#011C40] border border-slate-200 dark:border-[#26658C] text-[#011C40] dark:text-white focus:outline-none focus:ring-1 focus:ring-[#54ACBF]"
+                />
+                <Button size="sm" variant="primary" onClick={() => handleAddLabel()} className="shrink-0">
+                  Add
+                </Button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowLabelInput(false);
+                    setNewLabelInput('');
+                  }}
+                  className="shrink-0 p-1 text-slate-400 hover:text-slate-600 dark:hover:text-white cursor-pointer"
+                  title="Cancel"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            )}
           </div>
 
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={handleSaveAndClose}
-            className="px-6 font-semibold"
-          >
-            Done
-          </Button>
+          {/* Footer toolbar (Fixed at bottom) */}
+          <div className="flex items-center justify-between pt-3 mt-2 border-t border-black/5 dark:border-white/10 shrink-0">
+            <div className="flex items-center gap-1.5">
+              <ReminderPicker
+                currentReminder={reminder}
+                onSelectReminder={setReminder}
+              />
+
+              <ColorPicker currentColor={color} onSelectColor={setColor} />
+
+              <button
+                type="button"
+                onClick={() => setShowLabelInput((prev) => !prev)}
+                title="Add tag"
+                className="p-1.5 rounded-full text-slate-600 dark:text-[#A7EBF2]/80 hover:bg-[#A7EBF2]/20 dark:hover:bg-[#26658C]/50 transition-colors cursor-pointer"
+              >
+                <Tag className="w-4 h-4" />
+              </button>
+
+              {note.isArchived ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    unarchiveNote(note.id);
+                    onClose();
+                  }}
+                  title="Unarchive"
+                  className="p-1.5 rounded-full text-slate-600 dark:text-[#A7EBF2]/80 hover:bg-[#A7EBF2]/20 dark:hover:bg-[#26658C]/50 transition-colors cursor-pointer"
+                >
+                  <ArchiveRestore className="w-4 h-4" />
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    archiveNote(note.id);
+                    onClose();
+                  }}
+                  title="Archive"
+                  className="p-1.5 rounded-full text-slate-600 dark:text-[#A7EBF2]/80 hover:bg-[#A7EBF2]/20 dark:hover:bg-[#26658C]/50 transition-colors cursor-pointer"
+                >
+                  <Archive className="w-4 h-4" />
+                </button>
+              )}
+
+              <button
+                type="button"
+                onClick={() => setIsConfirmTrashOpen(true)}
+                title="Move to trash"
+                className="p-1.5 rounded-full text-slate-600 dark:text-[#A7EBF2]/80 hover:bg-rose-100 dark:hover:bg-rose-950/60 hover:text-rose-600 transition-colors cursor-pointer"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            </div>
+
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={handleSaveAndClose}
+              className="px-6 font-semibold"
+            >
+              Done
+            </Button>
+          </div>
         </div>
       </div>
-    </div>
+
+      <ConfirmModal
+        isOpen={isConfirmTrashOpen}
+        onClose={() => setIsConfirmTrashOpen(false)}
+        onConfirm={() => {
+          trashNote(note.id);
+          onClose();
+        }}
+        title="Move note to trash?"
+        description="This note will be moved to Trash. You can restore it anytime from the Trash view."
+        confirmText="Move to Trash"
+        variant="danger"
+      />
+    </>
   );
 }
 

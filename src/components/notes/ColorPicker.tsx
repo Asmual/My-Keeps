@@ -56,7 +56,7 @@ export function ColorPicker({
       {isOpen && (
         <div
           onClick={(e) => e.stopPropagation()}
-          className="absolute z-50 bottom-full mb-2 left-0 sm:left-1/2 sm:-translate-x-1/2 p-2.5 bg-white dark:bg-[#023859] rounded-2xl shadow-xl border border-[#A7EBF2] dark:border-[#26658C] grid grid-cols-6 gap-2 w-[230px] animate-in fade-in zoom-in-95 duration-150"
+          className="absolute z-50 bottom-full mb-2 left-0 p-2.5 bg-white dark:bg-[#023859] rounded-2xl shadow-xl border border-[#A7EBF2] dark:border-[#26658C] grid grid-cols-6 gap-2 w-[230px] max-w-[calc(100vw-2rem)] animate-in fade-in zoom-in-95 duration-150"
         >
           {Object.values(NOTE_COLORS).map((colorConfig) => {
             const isSelected = currentColor === colorConfig.id;

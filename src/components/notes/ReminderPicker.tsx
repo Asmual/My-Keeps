@@ -161,8 +161,8 @@ export function ReminderPicker({
         <div
           onClick={(e) => e.stopPropagation()}
           className={cn(
-            'absolute z-50 bottom-full mb-2 p-3 bg-white dark:bg-[#023859] rounded-2xl shadow-2xl border border-[#A7EBF2] dark:border-[#26658C] w-[270px] animate-in fade-in zoom-in-95 duration-150 select-none',
-            align === 'right' ? 'right-0' : 'left-0 sm:left-1/2 sm:-translate-x-1/2'
+            'absolute z-50 bottom-full mb-2 p-3 bg-white dark:bg-[#023859] rounded-2xl shadow-2xl border border-[#A7EBF2] dark:border-[#26658C] w-[270px] max-w-[calc(100vw-2rem)] animate-in fade-in zoom-in-95 duration-150 select-none',
+            align === 'right' ? 'right-0' : 'left-0'
           )}
         >
           {/* Header */}
