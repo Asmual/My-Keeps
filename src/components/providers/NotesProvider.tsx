@@ -1,9 +1,11 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState, useMemo } from 'react';
+import React, { createContext, useContext, useEffect, useState, useMemo, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { Note, NoteColorId, ViewMode } from '@/types/note';
 import { INITIAL_NOTES } from '@/lib/constants';
 import { generateId } from '@/lib/utils';
+import { useSession } from '@/lib/auth-client';
 import toast from 'react-hot-toast';
 
 interface NotesContextType {
@@ -26,7 +28,10 @@ interface NotesContextType {
     archive: number;
     trash: number;
   };
-  createNote: (noteData: Partial<Note>) => Note;
+  isAuthenticated: boolean;
+  currentUser: { id: string; email: string; name?: string } | null;
+  requireAuth: (actionName?: string) => boolean;
+  createNote: (noteData: Partial<Note>) => Note | null;
   updateNote: (id: string, updates: Partial<Note>) => void;
   togglePin: (id: string) => void;
   archiveNote: (id: string) => void;
@@ -43,6 +48,9 @@ interface NotesContextType {
 const NotesContext = createContext<NotesContextType | undefined>(undefined);
 
 export function NotesProvider({ children }: { children: React.ReactNode }) {
+  const router = useRouter();
+  const { data: session } = useSession();
+
   const [notes, setNotes] = useState<Note[]>(() => {
     if (typeof window !== 'undefined') {
       try {
@@ -54,11 +62,37 @@ export function NotesProvider({ children }: { children: React.ReactNode }) {
     }
     return INITIAL_NOTES;
   });
+
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [selectedLabel, setSelectedLabel] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [activeEditNote, setActiveEditNote] = useState<Note | null>(null);
+  const [activeEditNote, setActiveEditNoteState] = useState<Note | null>(null);
+
+  const isAuthenticated = Boolean(session?.user);
+  const currentUser = session?.user
+    ? {
+        id: session.user.id,
+        email: session.user.email,
+        name: session.user.name,
+      }
+    : null;
+
+  // Enforce authentication guard on actions
+  const requireAuth = useCallback(
+    (actionName = 'perform this action'): boolean => {
+      if (!session?.user) {
+        toast.error(`Please sign in to ${actionName}`, {
+          icon: '🔒',
+          duration: 3500,
+        });
+        router.push('/login');
+        return false;
+      }
+      return true;
+    },
+    [session, router]
+  );
 
   // Save to LocalStorage on modification
   useEffect(() => {
@@ -92,7 +126,16 @@ export function NotesProvider({ children }: { children: React.ReactNode }) {
   const toggleViewMode = () =>
     setViewMode((prev) => (prev === 'grid' ? 'list' : 'grid'));
 
-  const createNote = (noteData: Partial<Note>): Note => {
+  const setActiveEditNote = (note: Note | null) => {
+    if (note && !requireAuth('edit notes')) {
+      return;
+    }
+    setActiveEditNoteState(note);
+  };
+
+  const createNote = (noteData: Partial<Note>): Note | null => {
+    if (!requireAuth('create notes')) return null;
+
     const newNote: Note = {
       id: generateId(),
       title: noteData.title || '',
@@ -114,6 +157,8 @@ export function NotesProvider({ children }: { children: React.ReactNode }) {
   };
 
   const updateNote = (id: string, updates: Partial<Note>) => {
+    if (!requireAuth('update notes')) return;
+
     setNotes((prev) =>
       prev.map((n) =>
         n.id === id
@@ -122,11 +167,13 @@ export function NotesProvider({ children }: { children: React.ReactNode }) {
       )
     );
     if (activeEditNote && activeEditNote.id === id) {
-      setActiveEditNote((prev) => (prev ? { ...prev, ...updates } : null));
+      setActiveEditNoteState((prev) => (prev ? { ...prev, ...updates } : null));
     }
   };
 
   const togglePin = (id: string) => {
+    if (!requireAuth('pin notes')) return;
+
     setNotes((prev) =>
       prev.map((n) => {
         if (n.id === id) {
@@ -142,23 +189,27 @@ export function NotesProvider({ children }: { children: React.ReactNode }) {
   };
 
   const archiveNote = (id: string) => {
+    if (!requireAuth('archive notes')) return;
+
     setNotes((prev) =>
       prev.map((n) =>
         n.id === id
           ? {
               ...n,
               isArchived: true,
-              isPinned: false, // Archiving unpins
+              isPinned: false,
               updatedAt: new Date().toISOString(),
             }
           : n
       )
     );
     toast('Note archived', { icon: '📦' });
-    if (activeEditNote?.id === id) setActiveEditNote(null);
+    if (activeEditNote?.id === id) setActiveEditNoteState(null);
   };
 
   const unarchiveNote = (id: string) => {
+    if (!requireAuth('unarchive notes')) return;
+
     setNotes((prev) =>
       prev.map((n) =>
         n.id === id
@@ -170,6 +221,8 @@ export function NotesProvider({ children }: { children: React.ReactNode }) {
   };
 
   const trashNote = (id: string) => {
+    if (!requireAuth('delete notes')) return;
+
     setNotes((prev) =>
       prev.map((n) =>
         n.id === id
@@ -183,10 +236,12 @@ export function NotesProvider({ children }: { children: React.ReactNode }) {
       )
     );
     toast('Note moved to trash', { icon: '🗑️' });
-    if (activeEditNote?.id === id) setActiveEditNote(null);
+    if (activeEditNote?.id === id) setActiveEditNoteState(null);
   };
 
   const restoreNote = (id: string) => {
+    if (!requireAuth('restore notes')) return;
+
     setNotes((prev) =>
       prev.map((n) =>
         n.id === id
@@ -198,21 +253,28 @@ export function NotesProvider({ children }: { children: React.ReactNode }) {
   };
 
   const deletePermanently = (id: string) => {
+    if (!requireAuth('permanently delete notes')) return;
+
     setNotes((prev) => prev.filter((n) => n.id !== id));
     toast.error('Note deleted forever');
-    if (activeEditNote?.id === id) setActiveEditNote(null);
+    if (activeEditNote?.id === id) setActiveEditNoteState(null);
   };
 
   const emptyTrash = () => {
+    if (!requireAuth('empty trash')) return;
+
     setNotes((prev) => prev.filter((n) => !n.isTrashed));
     toast.success('Trash emptied');
   };
 
   const changeColor = (id: string, color: NoteColorId) => {
+    if (!requireAuth('change color')) return;
     updateNote(id, { color });
   };
 
   const addLabel = (id: string, label: string) => {
+    if (!requireAuth('add tags')) return;
+
     const trimmed = label.trim();
     if (!trimmed) return;
     setNotes((prev) =>
@@ -232,6 +294,8 @@ export function NotesProvider({ children }: { children: React.ReactNode }) {
   };
 
   const removeLabel = (id: string, label: string) => {
+    if (!requireAuth('remove tags')) return;
+
     setNotes((prev) =>
       prev.map((n) => {
         if (n.id === id) {
@@ -264,6 +328,9 @@ export function NotesProvider({ children }: { children: React.ReactNode }) {
         setActiveEditNote,
         allLabels,
         counts,
+        isAuthenticated,
+        currentUser,
+        requireAuth,
         createNote,
         updateNote,
         togglePin,

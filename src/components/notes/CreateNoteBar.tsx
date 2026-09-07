@@ -17,7 +17,7 @@ import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 
 export function CreateNoteBar() {
-  const { createNote } = useNotes();
+  const { createNote, requireAuth } = useNotes();
   const [isExpanded, setIsExpanded] = useState(false);
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
@@ -132,7 +132,10 @@ export function CreateNoteBar() {
         {!isExpanded ? (
           // Collapsed State
           <div
-            onClick={() => setIsExpanded(true)}
+            onClick={() => {
+              if (!requireAuth('create notes')) return;
+              setIsExpanded(true);
+            }}
             className="flex items-center justify-between px-4 py-3 cursor-text select-none text-neutral-500 dark:text-neutral-400"
           >
             <span className="text-sm font-medium">Take a note...</span>
@@ -140,6 +143,7 @@ export function CreateNoteBar() {
               <button
                 type="button"
                 onClick={() => {
+                  if (!requireAuth('create a list')) return;
                   setIsChecklistMode(true);
                   setIsExpanded(true);
                 }}

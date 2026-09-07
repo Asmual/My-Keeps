@@ -34,6 +34,7 @@ export function NoteCard({ note, isTrashView = false }: NoteCardProps) {
     addLabel,
     setActiveEditNote,
     updateNote,
+    requireAuth,
   } = useNotes();
 
   const [showTagInput, setShowTagInput] = useState(false);
@@ -209,7 +210,10 @@ export function NoteCard({ note, isTrashView = false }: NoteCardProps) {
 
             <button
               type="button"
-              onClick={() => setShowTagInput((prev) => !prev)}
+              onClick={() => {
+                if (!requireAuth('add tags')) return;
+                setShowTagInput((prev) => !prev);
+              }}
               title="Add tag"
               className="p-1.5 rounded-full text-neutral-600 dark:text-neutral-300 hover:bg-neutral-200/60 dark:hover:bg-neutral-700/60 transition-colors"
             >
