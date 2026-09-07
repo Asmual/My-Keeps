@@ -1,7 +1,5 @@
 import mongoose from 'mongoose';
 
-const MONGODB_URI = process.env.MONGODB_URI;
-
 interface MongooseCache {
   conn: typeof mongoose | null;
   promise: Promise<typeof mongoose> | null;
@@ -18,8 +16,9 @@ if (!global.mongooseCache) {
 }
 
 export async function connectToDatabase(): Promise<typeof mongoose | null> {
-  if (!MONGODB_URI) {
-    // In development/UI phase, MONGODB_URI may not be set yet. Log gentle guidance.
+  const uri = process.env.MONGODB_URI;
+  if (!uri) {
+    console.warn('⚠️ MONGODB_URI environment variable is not defined.');
     return null;
   }
 
@@ -32,13 +31,17 @@ export async function connectToDatabase(): Promise<typeof mongoose | null> {
       bufferCommands: false,
     };
 
-    cached.promise = mongoose.connect(MONGODB_URI, opts).then((m) => m);
+    cached.promise = mongoose.connect(uri, opts).then((m) => {
+      console.log('✅ Connected to MongoDB successfully.');
+      return m;
+    });
   }
 
   try {
     cached.conn = await cached.promise;
   } catch (e) {
     cached.promise = null;
+    console.error('❌ Error connecting to MongoDB:', e);
     throw e;
   }
 
