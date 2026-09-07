@@ -49,7 +49,7 @@ export function Sidebar() {
       label: 'Reminders',
       href: '/reminders',
       icon: Bell,
-      count: 0,
+      count: counts.reminders,
       active: pathname === '/reminders',
     },
     {
