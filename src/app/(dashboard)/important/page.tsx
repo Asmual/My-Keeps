@@ -14,7 +14,7 @@ export default function ImportantPage() {
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
-      <CreateNoteBar />
+      <CreateNoteBar defaultImportant={true} />
 
       <NoteGrid notes={importantNotes} emptyType="important" />
     </div>

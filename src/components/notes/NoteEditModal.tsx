@@ -101,6 +101,16 @@ function NoteEditModalContent({ note, onClose }: NoteEditModalContentProps) {
     }
   };
 
+  const noteType: 'text' | 'checklist' | 'image' | 'voice' =
+    note.noteType ||
+    (note.audioUrl
+      ? 'voice'
+      : note.images && note.images.length > 0
+      ? 'image'
+      : note.checklist && note.checklist.length > 0
+      ? 'checklist'
+      : 'text');
+
   const handleSaveAndClose = useCallback(() => {
     if (audioPreviewRef.current) {
       audioPreviewRef.current.pause();
@@ -108,10 +118,29 @@ function NoteEditModalContent({ note, onClose }: NoteEditModalContentProps) {
     }
     setIsPlayingAudio(false);
 
-    let noteType: 'text' | 'checklist' | 'image' | 'voice' = 'text';
-    if (audioUrl) noteType = 'voice';
-    else if (images.length > 0) noteType = 'image';
-    else if (checklist.length > 0) noteType = 'checklist';
+    let finalNoteType: 'text' | 'checklist' | 'image' | 'voice' = noteType;
+    let finalChecklist = checklist.length > 0 ? checklist : undefined;
+    let finalImages = images;
+    let finalAudioUrl = audioUrl;
+
+    if (noteType === 'text') {
+      finalNoteType = 'text';
+      finalChecklist = undefined;
+      finalImages = [];
+      finalAudioUrl = null;
+    } else if (noteType === 'checklist') {
+      finalNoteType = 'checklist';
+      finalImages = [];
+      finalAudioUrl = null;
+    } else if (noteType === 'image') {
+      finalNoteType = 'image';
+      finalChecklist = undefined;
+      finalAudioUrl = null;
+    } else if (noteType === 'voice') {
+      finalNoteType = 'voice';
+      finalChecklist = undefined;
+      finalImages = [];
+    }
 
     updateNote(note.id, {
       title: title.trim(),
@@ -120,14 +149,15 @@ function NoteEditModalContent({ note, onClose }: NoteEditModalContentProps) {
       isPinned,
       isImportant,
       labels,
-      checklist: checklist.length > 0 ? checklist : undefined,
-      noteType,
-      images,
-      audioUrl,
+      checklist: finalChecklist,
+      noteType: finalNoteType,
+      images: finalImages,
+      audioUrl: finalAudioUrl,
     });
     onClose();
   }, [
     note.id,
+    noteType,
     title,
     content,
     color,
@@ -586,39 +616,44 @@ function NoteEditModalContent({ note, onClose }: NoteEditModalContentProps) {
                 <Tag className="w-4 h-4" />
               </button>
 
-              {/* Add Image button */}
-              <button
-                type="button"
-                onClick={() => imageInputRef.current?.click()}
-                title="Attach image"
-                className="p-1.5 rounded-full text-slate-600 dark:text-[#A7EBF2]/80 hover:bg-[#A7EBF2]/20 dark:hover:bg-[#26658C]/50 transition-colors cursor-pointer"
-              >
-                <ImageIcon className="w-4 h-4" />
-              </button>
+              {/* Add Image button - ONLY for image notes */}
+              {noteType === 'image' && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => imageInputRef.current?.click()}
+                    title="Attach image"
+                    className="p-1.5 rounded-full text-slate-600 dark:text-[#A7EBF2]/80 hover:bg-[#A7EBF2]/20 dark:hover:bg-[#26658C]/50 transition-colors cursor-pointer"
+                  >
+                    <ImageIcon className="w-4 h-4" />
+                  </button>
+                  <input
+                    ref={imageInputRef}
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onChange={handleImageUpload}
+                    className="hidden"
+                  />
+                </>
+              )}
 
-              {/* Voice memo button */}
-              <button
-                type="button"
-                onClick={() => setShowVoiceRecorder((prev) => !prev)}
-                title="Record voice note"
-                className={cn(
-                  'p-1.5 rounded-full transition-colors cursor-pointer',
-                  showVoiceRecorder || audioUrl
-                    ? 'text-[#011C40] bg-[#A7EBF2]'
-                    : 'text-slate-600 dark:text-[#A7EBF2]/80 hover:bg-[#A7EBF2]/20 dark:hover:bg-[#26658C]/50'
-                )}
-              >
-                <Mic className="w-4 h-4" />
-              </button>
-
-              <input
-                ref={imageInputRef}
-                type="file"
-                accept="image/*"
-                multiple
-                onChange={handleImageUpload}
-                className="hidden"
-              />
+              {/* Voice memo button - ONLY for voice notes */}
+              {noteType === 'voice' && (
+                <button
+                  type="button"
+                  onClick={() => setShowVoiceRecorder((prev) => !prev)}
+                  title="Record voice note"
+                  className={cn(
+                    'p-1.5 rounded-full transition-colors cursor-pointer',
+                    showVoiceRecorder || audioUrl
+                      ? 'text-[#011C40] bg-[#A7EBF2]'
+                      : 'text-slate-600 dark:text-[#A7EBF2]/80 hover:bg-[#A7EBF2]/20 dark:hover:bg-[#26658C]/50'
+                  )}
+                >
+                  <Mic className="w-4 h-4" />
+                </button>
+              )}
 
               {note.isArchived ? (
                 <button

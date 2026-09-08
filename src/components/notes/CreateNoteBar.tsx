@@ -33,9 +33,13 @@ import toast from 'react-hot-toast';
 
 interface CreateNoteBarProps {
   defaultNoteType?: 'text' | 'checklist' | 'image' | 'voice';
+  defaultImportant?: boolean;
 }
 
-export function CreateNoteBar({ defaultNoteType = 'text' }: CreateNoteBarProps) {
+export function CreateNoteBar({
+  defaultNoteType = 'text',
+  defaultImportant = false,
+}: CreateNoteBarProps) {
   const { createNote, requireAuth } = useNotes();
   const [isExpanded, setIsExpanded] = useState(false);
   const [title, setTitle] = useState('');
@@ -48,7 +52,7 @@ export function CreateNoteBar({ defaultNoteType = 'text' }: CreateNoteBarProps) 
   const [isChecklistMode, setIsChecklistMode] = useState(defaultNoteType === 'checklist');
   const [checklist, setChecklist] = useState<CheckItem[]>([]);
   const [newCheckItem, setNewCheckItem] = useState('');
-  const [isImportant, setIsImportant] = useState(false);
+  const [isImportant, setIsImportant] = useState(defaultImportant);
   const [images, setImages] = useState<string[]>([]);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [showVoiceRecorder, setShowVoiceRecorder] = useState(false);
@@ -115,9 +119,9 @@ export function CreateNoteBar({ defaultNoteType = 'text' }: CreateNoteBarProps) 
     const hasContent =
       title.trim() ||
       content.trim() ||
-      checklist.length > 0 ||
-      images.length > 0 ||
-      audioUrl;
+      (defaultNoteType === 'checklist' && checklist.length > 0) ||
+      (defaultNoteType === 'image' && images.length > 0) ||
+      (defaultNoteType === 'voice' && Boolean(audioUrl));
 
     if (!hasContent) {
       setIsExpanded(false);
@@ -127,9 +131,31 @@ export function CreateNoteBar({ defaultNoteType = 'text' }: CreateNoteBarProps) 
     isSubmittingRef.current = true;
 
     let noteType: 'text' | 'checklist' | 'image' | 'voice' = defaultNoteType;
-    if (audioUrl) noteType = 'voice';
-    else if (images.length > 0) noteType = 'image';
-    else if (checklist.length > 0 || isChecklistMode) noteType = 'checklist';
+    let finalChecklist: CheckItem[] | undefined = undefined;
+    let finalImages: string[] | undefined = undefined;
+    let finalAudioUrl: string | undefined = undefined;
+
+    if (defaultNoteType === 'text') {
+      noteType = 'text';
+      finalChecklist = undefined;
+      finalImages = undefined;
+      finalAudioUrl = undefined;
+    } else if (defaultNoteType === 'checklist') {
+      noteType = 'checklist';
+      finalChecklist = checklist.length > 0 || isChecklistMode ? checklist : [];
+      finalImages = undefined;
+      finalAudioUrl = undefined;
+    } else if (defaultNoteType === 'image') {
+      noteType = 'image';
+      finalChecklist = undefined;
+      finalImages = images.length > 0 ? images : undefined;
+      finalAudioUrl = undefined;
+    } else if (defaultNoteType === 'voice') {
+      noteType = 'voice';
+      finalChecklist = undefined;
+      finalImages = undefined;
+      finalAudioUrl = audioUrl || undefined;
+    }
 
     const payload = {
       title: title.trim(),
@@ -138,17 +164,17 @@ export function CreateNoteBar({ defaultNoteType = 'text' }: CreateNoteBarProps) 
       isPinned,
       isImportant,
       labels,
-      checklist: isChecklistMode || checklist.length > 0 ? checklist : undefined,
+      checklist: finalChecklist,
       noteType,
-      images: images.length > 0 ? images : undefined,
-      audioUrl: audioUrl || undefined,
+      images: finalImages,
+      audioUrl: finalAudioUrl,
     };
 
     // Reset state immediately to prevent duplicate creation
     setTitle('');
     setContent('');
     setIsPinned(false);
-    setIsImportant(false);
+    setIsImportant(defaultImportant);
     setColor('default');
     setLabels([]);
     setChecklist([]);
@@ -175,6 +201,7 @@ export function CreateNoteBar({ defaultNoteType = 'text' }: CreateNoteBarProps) 
     labels,
     isChecklistMode,
     defaultNoteType,
+    defaultImportant,
   ]);
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -301,6 +328,9 @@ export function CreateNoteBar({ defaultNoteType = 'text' }: CreateNoteBarProps) 
               if (defaultNoteType === 'voice') {
                 setShowVoiceRecorder(true);
               }
+              if (defaultNoteType === 'checklist') {
+                setIsChecklistMode(true);
+              }
               setIsExpanded(true);
             }}
             className="flex items-center justify-between px-5 py-3.5 cursor-text select-none text-slate-500 dark:text-[#A7EBF2]/70"
@@ -315,43 +345,49 @@ export function CreateNoteBar({ defaultNoteType = 'text' }: CreateNoteBarProps) 
                 : 'Take a note...'}
             </span>
             <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-              <button
-                type="button"
-                onClick={() => {
-                  if (!requireAuth('create a list')) return;
-                  setIsChecklistMode(true);
-                  setIsExpanded(true);
-                }}
-                className="p-2 rounded-full hover:bg-[#A7EBF2]/20 dark:hover:bg-[#26658C]/50 transition-colors text-slate-500 dark:text-[#54ACBF] cursor-pointer"
-                title="New list"
-              >
-                <CheckSquare className="w-4 h-4" />
-              </button>
+              {defaultNoteType === 'checklist' && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!requireAuth('create a list')) return;
+                    setIsChecklistMode(true);
+                    setIsExpanded(true);
+                  }}
+                  className="p-2 rounded-full hover:bg-[#A7EBF2]/20 dark:hover:bg-[#26658C]/50 transition-colors text-slate-500 dark:text-[#54ACBF] cursor-pointer"
+                  title="New list"
+                >
+                  <CheckSquare className="w-4 h-4" />
+                </button>
+              )}
 
-              <button
-                type="button"
-                onClick={() => {
-                  if (!requireAuth('add images')) return;
-                  imageInputRef.current?.click();
-                }}
-                className="p-2 rounded-full hover:bg-[#A7EBF2]/20 dark:hover:bg-[#26658C]/50 transition-colors text-slate-500 dark:text-[#54ACBF] cursor-pointer"
-                title="New note with image"
-              >
-                <ImageIcon className="w-4 h-4" />
-              </button>
+              {defaultNoteType === 'image' && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!requireAuth('add images')) return;
+                    imageInputRef.current?.click();
+                  }}
+                  className="p-2 rounded-full hover:bg-[#A7EBF2]/20 dark:hover:bg-[#26658C]/50 transition-colors text-slate-500 dark:text-[#54ACBF] cursor-pointer"
+                  title="New note with image"
+                >
+                  <ImageIcon className="w-4 h-4" />
+                </button>
+              )}
 
-              <button
-                type="button"
-                onClick={() => {
-                  if (!requireAuth('record voice note')) return;
-                  setShowVoiceRecorder(true);
-                  setIsExpanded(true);
-                }}
-                className="p-2 rounded-full hover:bg-[#A7EBF2]/20 dark:hover:bg-[#26658C]/50 transition-colors text-slate-500 dark:text-[#54ACBF] cursor-pointer"
-                title="New voice note"
-              >
-                <Mic className="w-4 h-4" />
-              </button>
+              {defaultNoteType === 'voice' && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!requireAuth('record voice note')) return;
+                    setShowVoiceRecorder(true);
+                    setIsExpanded(true);
+                  }}
+                  className="p-2 rounded-full hover:bg-[#A7EBF2]/20 dark:hover:bg-[#26658C]/50 transition-colors text-slate-500 dark:text-[#54ACBF] cursor-pointer"
+                  title="New voice note"
+                >
+                  <Mic className="w-4 h-4" />
+                </button>
+              )}
             </div>
           </div>
         ) : (
@@ -398,93 +434,112 @@ export function CreateNoteBar({ defaultNoteType = 'text' }: CreateNoteBarProps) 
               </div>
             </div>
 
-            {/* Images preview gallery */}
-            {images.length > 0 && (
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-1">
-                {images.map((img, idx) => (
-                  <div key={idx} className="relative group rounded-xl overflow-hidden aspect-video border border-black/10 dark:border-white/10 bg-slate-100 dark:bg-black/20">
-                    <img
-                      src={img}
-                      alt={`Attached image ${idx + 1}`}
-                      className="w-full h-full object-cover"
-                      loading="lazy"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setImages((prev) => prev.filter((_, i) => i !== idx))}
-                      className="absolute top-1 right-1 p-1 rounded-full bg-black/60 text-white hover:bg-rose-600 transition-colors opacity-0 group-hover:opacity-100 cursor-pointer"
-                      title="Remove image"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Voice Memo recording or playback */}
-            {showVoiceRecorder ? (
-              <VoiceRecorder
-                initialAudioUrl={audioUrl}
-                onSaveAudio={async (recordedData) => {
-                  if (!recordedData) {
-                    setAudioUrl(null);
-                    setShowVoiceRecorder(false);
-                    return;
-                  }
-                  setIsUploading(true);
-                  const toastId = toast.loading('Uploading voice memo...');
-                  try {
-                    const uploadedUrl = await uploadMedia(recordedData, 'voice');
-                    setAudioUrl(uploadedUrl);
-                    toast.success('Voice memo saved', { id: toastId });
-                  } catch {
-                    setAudioUrl(recordedData);
-                  } finally {
-                    setIsUploading(false);
-                    setShowVoiceRecorder(false);
-                  }
-                }}
-                onClose={() => setShowVoiceRecorder(false)}
-              />
-            ) : audioUrl ? (
-              <div className="flex items-center justify-between p-2.5 rounded-xl bg-[#54ACBF]/15 dark:bg-[#011C40] border border-[#54ACBF]/30 text-xs">
-                <div className="flex items-center gap-2 font-medium text-[#011C40] dark:text-[#A7EBF2]">
-                  <button
-                    type="button"
-                    onClick={togglePlayAudio}
-                    className="p-1.5 rounded-full bg-[#54ACBF] text-white hover:bg-[#26658C] transition-colors cursor-pointer"
-                    title={isPlayingAudio ? 'Pause' : 'Play voice memo'}
-                  >
-                    {isPlayingAudio ? (
-                      <Pause className="w-3 h-3 fill-current" />
-                    ) : (
-                      <Play className="w-3 h-3 fill-current ml-0.5" />
-                    )}
-                  </button>
-                  <span className="flex items-center gap-1.5">
-                    <Mic className="w-3.5 h-3.5 text-[#54ACBF]" />
-                    {isPlayingAudio ? 'Playing voice note...' : 'Voice memo attached'}
-                  </span>
+            {/* Images section - ONLY for image notes */}
+            {defaultNoteType === 'image' && (
+              images.length > 0 ? (
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-1">
+                  {images.map((img, idx) => (
+                    <div key={idx} className="relative group rounded-xl overflow-hidden aspect-video border border-black/10 dark:border-white/10 bg-slate-100 dark:bg-black/20">
+                      <img
+                        src={img}
+                        alt={`Attached image ${idx + 1}`}
+                        className="w-full h-full object-cover"
+                        loading="lazy"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setImages((prev) => prev.filter((_, i) => i !== idx))}
+                        className="absolute top-1 right-1 p-1 rounded-full bg-black/60 text-white hover:bg-rose-600 transition-colors opacity-0 group-hover:opacity-100 cursor-pointer"
+                        title="Remove image"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ))}
                 </div>
+              ) : (
                 <button
                   type="button"
-                  onClick={() => setIsConfirmDeleteAudioOpen(true)}
-                  className="p-1 text-rose-500 hover:bg-rose-100 dark:hover:bg-rose-950/60 rounded-md transition-colors cursor-pointer"
-                  title="Remove voice note"
+                  onClick={() => imageInputRef.current?.click()}
+                  className="flex items-center justify-center gap-2 w-full py-5 rounded-xl border-2 border-dashed border-[#54ACBF]/40 hover:border-[#54ACBF] text-[#26658C] dark:text-[#A7EBF2] hover:bg-[#A7EBF2]/10 transition-colors text-xs font-medium cursor-pointer"
                 >
-                  <Trash2 className="w-3.5 h-3.5" />
+                  <ImageIcon className="w-4 h-4 text-[#54ACBF]" />
+                  <span>Click to upload image(s)</span>
                 </button>
-              </div>
-            ) : null}
+              )
+            )}
+
+            {/* Voice Memo recording or playback - ONLY for voice notes */}
+            {defaultNoteType === 'voice' && (
+              showVoiceRecorder ? (
+                <VoiceRecorder
+                  initialAudioUrl={audioUrl}
+                  onSaveAudio={async (recordedData) => {
+                    if (!recordedData) {
+                      setAudioUrl(null);
+                      setShowVoiceRecorder(false);
+                      return;
+                    }
+                    setIsUploading(true);
+                    const toastId = toast.loading('Uploading voice memo...');
+                    try {
+                      const uploadedUrl = await uploadMedia(recordedData, 'voice');
+                      setAudioUrl(uploadedUrl);
+                      toast.success('Voice memo saved', { id: toastId });
+                    } catch {
+                      setAudioUrl(recordedData);
+                    } finally {
+                      setIsUploading(false);
+                      setShowVoiceRecorder(false);
+                    }
+                  }}
+                  onClose={() => setShowVoiceRecorder(false)}
+                />
+              ) : audioUrl ? (
+                <div className="flex items-center justify-between p-2.5 rounded-xl bg-[#54ACBF]/15 dark:bg-[#011C40] border border-[#54ACBF]/30 text-xs">
+                  <div className="flex items-center gap-2 font-medium text-[#011C40] dark:text-[#A7EBF2]">
+                    <button
+                      type="button"
+                      onClick={togglePlayAudio}
+                      className="p-1.5 rounded-full bg-[#54ACBF] text-white hover:bg-[#26658C] transition-colors cursor-pointer"
+                      title={isPlayingAudio ? 'Pause' : 'Play voice memo'}
+                    >
+                      {isPlayingAudio ? (
+                        <Pause className="w-3 h-3 fill-current" />
+                      ) : (
+                        <Play className="w-3 h-3 fill-current ml-0.5" />
+                      )}
+                    </button>
+                    <span className="flex items-center gap-1.5">
+                      <Mic className="w-3.5 h-3.5 text-[#54ACBF]" />
+                      {isPlayingAudio ? 'Playing voice note...' : 'Voice memo attached'}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsConfirmDeleteAudioOpen(true)}
+                    className="p-1 text-rose-500 hover:bg-rose-100 dark:hover:bg-rose-950/60 rounded-md transition-colors cursor-pointer"
+                    title="Remove voice note"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ) : null
+            )}
 
             {/* Content or Checklist */}
-            {!isChecklistMode ? (
+            {defaultNoteType !== 'checklist' ? (
               <textarea
                 ref={textareaRef}
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
-                placeholder="Take a note..."
+                placeholder={
+                  defaultNoteType === 'image'
+                    ? 'Image note details...'
+                    : defaultNoteType === 'voice'
+                    ? 'Voice note details...'
+                    : 'Take a note...'
+                }
                 rows={3}
                 className="w-full bg-transparent text-sm text-[#011C40] dark:text-[#F8FAFC] placeholder-slate-400 dark:placeholder-[#A7EBF2]/50 resize-none focus:outline-none leading-relaxed"
               />
@@ -683,20 +738,6 @@ export function CreateNoteBar({ defaultNoteType = 'text' }: CreateNoteBarProps) 
 
                 <button
                   type="button"
-                  onClick={() => setIsChecklistMode((prev) => !prev)}
-                  className={cn(
-                    'p-1.5 rounded-full transition-colors cursor-pointer',
-                    isChecklistMode
-                      ? 'text-[#011C40] dark:text-[#011C40] bg-[#A7EBF2]'
-                      : 'text-slate-600 dark:text-[#A7EBF2]/80 hover:bg-[#A7EBF2]/20 dark:hover:bg-[#26658C]/50'
-                  )}
-                  title="Checklist toggle"
-                >
-                  <CheckSquare className="w-4 h-4" />
-                </button>
-
-                <button
-                  type="button"
                   onClick={() => setShowLabelInput((prev) => !prev)}
                   className="p-1.5 rounded-full text-slate-600 dark:text-[#A7EBF2]/80 hover:bg-[#A7EBF2]/20 dark:hover:bg-[#26658C]/50 transition-colors cursor-pointer"
                   title="Add tag"
@@ -704,39 +745,34 @@ export function CreateNoteBar({ defaultNoteType = 'text' }: CreateNoteBarProps) 
                   <Tag className="w-4 h-4" />
                 </button>
 
-                {/* Add image button */}
-                <button
-                  type="button"
-                  onClick={() => imageInputRef.current?.click()}
-                  className="p-1.5 rounded-full text-slate-600 dark:text-[#A7EBF2]/80 hover:bg-[#A7EBF2]/20 dark:hover:bg-[#26658C]/50 transition-colors cursor-pointer"
-                  title="Add image"
-                >
-                  <ImageIcon className="w-4 h-4" />
-                </button>
+                {/* Add image button - ONLY for image notes */}
+                {defaultNoteType === 'image' && (
+                  <button
+                    type="button"
+                    onClick={() => imageInputRef.current?.click()}
+                    className="p-1.5 rounded-full text-slate-600 dark:text-[#A7EBF2]/80 hover:bg-[#A7EBF2]/20 dark:hover:bg-[#26658C]/50 transition-colors cursor-pointer"
+                    title="Add image"
+                  >
+                    <ImageIcon className="w-4 h-4" />
+                  </button>
+                )}
 
-                {/* Voice note recorder button */}
-                <button
-                  type="button"
-                  onClick={() => setShowVoiceRecorder((prev) => !prev)}
-                  className={cn(
-                    'p-1.5 rounded-full transition-colors cursor-pointer',
-                    showVoiceRecorder || audioUrl
-                      ? 'text-[#011C40] bg-[#A7EBF2]'
-                      : 'text-slate-600 dark:text-[#A7EBF2]/80 hover:bg-[#A7EBF2]/20 dark:hover:bg-[#26658C]/50'
-                  )}
-                  title="Record voice note"
-                >
-                  <Mic className="w-4 h-4" />
-                </button>
-
-                <input
-                  ref={imageInputRef}
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  onChange={handleImageUpload}
-                  className="hidden"
-                />
+                {/* Voice note recorder button - ONLY for voice notes */}
+                {defaultNoteType === 'voice' && (
+                  <button
+                    type="button"
+                    onClick={() => setShowVoiceRecorder((prev) => !prev)}
+                    className={cn(
+                      'p-1.5 rounded-full transition-colors cursor-pointer',
+                      showVoiceRecorder || audioUrl
+                        ? 'text-[#011C40] bg-[#A7EBF2]'
+                        : 'text-slate-600 dark:text-[#A7EBF2]/80 hover:bg-[#A7EBF2]/20 dark:hover:bg-[#26658C]/50'
+                    )}
+                    title="Record voice note"
+                  >
+                    <Mic className="w-4 h-4" />
+                  </button>
+                )}
               </div>
 
               <Button
@@ -752,6 +788,16 @@ export function CreateNoteBar({ defaultNoteType = 'text' }: CreateNoteBarProps) 
             </div>
           </div>
         )}
+
+        {/* Hidden file input for images (always mounted so collapsed icon triggers it correctly) */}
+        <input
+          ref={imageInputRef}
+          type="file"
+          accept="image/*"
+          multiple
+          onChange={handleImageUpload}
+          className="hidden"
+        />
       </div>
 
       <ConfirmModal
