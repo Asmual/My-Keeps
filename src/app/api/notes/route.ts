@@ -60,6 +60,7 @@ export async function GET(request: NextRequest) {
       return {
         ...rest,
         id: String(_id),
+        isLocked: Boolean(rest.isLocked),
       };
     });
 
@@ -79,7 +80,7 @@ export async function POST(request: NextRequest) {
 
     let isLocked = Boolean(body.isLocked);
     let passwordHash: string | null = null;
-    if (body.password && typeof body.password === 'string' && body.password.trim().length > 0) {
+    if (body.password && typeof body.password === 'string' && body.password.trim().length >= 4) {
       isLocked = true;
       passwordHash = hashNotePassword(body.password.trim());
     }
@@ -114,6 +115,7 @@ export async function POST(request: NextRequest) {
     const result = {
       ...noteObj,
       id: String(noteObj._id),
+      isLocked: Boolean(noteObj.isLocked),
     };
 
     return NextResponse.json({ success: true, data: result }, { status: 201 });
@@ -127,11 +129,10 @@ export async function POST(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
+    await connectToDatabase();
     const { searchParams } = new URL(request.url);
     const action = searchParams.get('action');
     const userId = searchParams.get('userId');
-
-    await connectToDatabase();
 
     if (action === 'empty-trash') {
       const query: Record<string, unknown> = { isTrashed: true };
@@ -140,7 +141,7 @@ export async function DELETE(request: NextRequest) {
       const res = await NoteModel.deleteMany(query);
       return NextResponse.json({
         success: true,
-        message: 'Trash emptied successfully from MongoDB',
+        message: 'Trash emptied successfully',
         deletedCount: res.deletedCount,
       });
     }
@@ -172,7 +173,7 @@ export async function DELETE(request: NextRequest) {
       const res = await NoteModel.deleteMany(query);
       return NextResponse.json({
         success: true,
-        message: `${res.deletedCount} notes deleted from MongoDB`,
+        message: `${res.deletedCount} notes deleted`,
         deletedCount: res.deletedCount,
       });
     }

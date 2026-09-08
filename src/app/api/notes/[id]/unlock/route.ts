@@ -44,9 +44,11 @@ export async function POST(
 
     // Password verified!
     if (action === 'remove-lock') {
+      await NoteModel.findOneAndUpdate(query, {
+        $set: { isLocked: false, password: null },
+      });
       note.isLocked = false;
       note.password = null;
-      await note.save();
     }
 
     const obj = (note.toObject() as unknown) as Record<string, unknown>;

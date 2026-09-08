@@ -196,7 +196,7 @@ export function BatchActionBar({
         onClose={() => setIsConfirmDeleteOpen(false)}
         onConfirm={batchDeletePermanently}
         title={`Delete ${count} notes permanently?`}
-        description="This action cannot be undone. All selected notes will be permanently removed from MongoDB."
+        description="This action cannot be undone. All selected notes will be permanently deleted."
         confirmText="Delete Permanently"
         variant="danger"
       />

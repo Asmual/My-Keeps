@@ -260,7 +260,7 @@ export function Sidebar() {
                   <span className="truncate max-w-[160px] text-[#011C40] dark:text-[#A7EBF2] font-semibold text-xs">
                     {currentUser?.name || currentUser?.email || 'Luna User'}
                   </span>
-                  <span className="w-2.5 h-2.5 rounded-full bg-[#54ACBF] ring-2 ring-[#54ACBF]/20" title="Connected to MongoDB" />
+                  <span className="w-2.5 h-2.5 rounded-full bg-[#54ACBF] ring-2 ring-[#54ACBF]/20" title="Connected & Synced" />
                 </div>
               )}
             </div>
@@ -402,7 +402,7 @@ export function Sidebar() {
                 <span className="truncate max-w-[140px] text-[#011C40] dark:text-[#A7EBF2] font-semibold text-[11px]">
                   {currentUser?.name || currentUser?.email || 'Luna User'}
                 </span>
-                <span className="w-2.5 h-2.5 rounded-full bg-[#54ACBF] ring-2 ring-[#54ACBF]/20" title="Connected to MongoDB" />
+                <span className="w-2.5 h-2.5 rounded-full bg-[#54ACBF] ring-2 ring-[#54ACBF]/20" title="Connected & Synced" />
               </div>
             )}
             <div className="flex items-center justify-between text-[11px] opacity-70">

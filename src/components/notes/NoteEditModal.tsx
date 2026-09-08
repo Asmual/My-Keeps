@@ -162,7 +162,6 @@ function NoteEditModalContent({ note, onClose }: NoteEditModalContentProps) {
       noteType: finalNoteType,
       images: finalImages,
       audioUrl: finalAudioUrl,
-      isLocked,
     });
     onClose();
   }, [
@@ -177,7 +176,6 @@ function NoteEditModalContent({ note, onClose }: NoteEditModalContentProps) {
     checklist,
     images,
     audioUrl,
-    isLocked,
     updateNote,
     onClose,
   ]);

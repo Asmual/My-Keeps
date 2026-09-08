@@ -14,29 +14,31 @@ interface ThemeContextType {
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>('light');
-  const [resolvedTheme, setResolvedTheme] = useState<'light' | 'dark'>('light');
+  const [theme, setThemeState] = useState<Theme>('dark');
+  const [resolvedTheme, setResolvedTheme] = useState<'light' | 'dark'>('dark');
 
   useEffect(() => {
     const saved = typeof window !== 'undefined' ? (localStorage.getItem('mykeeps-theme') as Theme | null) : null;
-    if (saved && (saved === 'light' || saved === 'dark' || saved === 'system')) {
+    if (saved === 'light' || saved === 'dark') {
       setThemeState(saved);
-    } else if (typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+    } else {
+      // Always default to dark mode on first visit
       setThemeState('dark');
     }
   }, []);
 
   useEffect(() => {
-
     const root = document.documentElement;
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
 
     const applyTheme = () => {
-      let activeTheme: 'light' | 'dark' = 'light';
-      if (theme === 'system') {
+      let activeTheme: 'light' | 'dark' = 'dark';
+      if (theme === 'light') {
+        activeTheme = 'light';
+      } else if (theme === 'dark') {
+        activeTheme = 'dark';
+      } else if (theme === 'system') {
         activeTheme = mediaQuery.matches ? 'dark' : 'light';
-      } else {
-        activeTheme = theme;
       }
 
       setResolvedTheme(activeTheme);

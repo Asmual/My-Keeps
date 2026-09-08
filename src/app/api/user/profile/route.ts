@@ -141,7 +141,7 @@ export async function PATCH(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: 'Profile updated successfully in MongoDB',
+      message: 'Profile updated successfully',
       user: {
         id: String(updated.id || updated._id),
         name: updated.name || '',

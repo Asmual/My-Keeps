@@ -230,7 +230,7 @@ export function ProfileModal({
           <div className="flex flex-col items-center justify-center py-10 space-y-2">
             <Loader2 className="w-8 h-8 text-[#54ACBF] animate-spin" />
             <span className="text-xs text-slate-400 dark:text-[#A7EBF2]/60">
-              Loading profile from MongoDB...
+              Loading profile...
             </span>
           </div>
         ) : (

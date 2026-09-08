@@ -263,14 +263,14 @@ export function NotesProvider({ children }: { children: React.ReactNode }) {
       if (json.success && json.data) {
         const createdNote: Note = json.data;
         setNotes((prev) => [createdNote, ...prev]);
-        toast.success('Note saved to MongoDB');
+        toast.success('Note saved');
         return createdNote;
       } else {
         toast.error('Failed to save note');
       }
     } catch (err) {
       console.error('Error creating note in MongoDB:', err);
-      toast.error('Failed to connect to MongoDB');
+      toast.error('Failed to save note');
     }
     return null;
   };

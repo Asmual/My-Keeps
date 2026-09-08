@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useSyncExternalStore } from 'react';
+import { createPortal } from 'react-dom';
 import { LockKeyhole, Eye, EyeOff, X, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import toast from 'react-hot-toast';
@@ -12,18 +13,26 @@ interface UnlockModalProps {
   noteTitle?: string;
 }
 
+const emptySubscribe = () => () => {};
+
 export function UnlockModal({
   isOpen,
   onClose,
   onUnlock,
   noteTitle,
 }: UnlockModalProps) {
+  const isMounted = useSyncExternalStore(
+    emptySubscribe,
+    () => true,
+    () => false
+  );
+
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
-  if (!isOpen) return null;
+  if (!isOpen || !isMounted) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -54,24 +63,25 @@ export function UnlockModal({
     }
   };
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150"
+      className="fixed inset-0 z-[200] flex items-center justify-center p-4 sm:p-6 bg-[#011C40]/65 backdrop-blur-sm animate-in fade-in duration-150 overflow-y-auto"
+      style={{ minHeight: '100dvh' }}
       onClick={onClose}
     >
       <div
-        className="w-full max-w-sm rounded-2xl bg-white dark:bg-[#011C40] border border-[#54ACBF]/40 shadow-2xl p-6 space-y-4 animate-in zoom-in-95 duration-150 text-[#011C40] dark:text-white"
+        className="my-auto w-full max-w-sm rounded-3xl bg-white dark:bg-[#023859] border border-[#A7EBF2] dark:border-[#26658C] shadow-2xl p-5 sm:p-6 space-y-4 animate-in zoom-in-95 duration-150 text-[#011C40] dark:text-white select-none"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-3">
-            <div className="p-3 rounded-2xl bg-amber-500/15 text-amber-500 shrink-0">
-              <LockKeyhole className="w-6 h-6" />
+            <div className="p-2.5 rounded-2xl bg-amber-500/20 text-amber-500 dark:text-amber-400 shrink-0">
+              <LockKeyhole className="w-5 h-5" />
             </div>
             <div>
               <h3 className="text-base font-semibold">Locked Note</h3>
-              <p className="text-xs text-slate-500 dark:text-[#A7EBF2]/70 mt-0.5 truncate max-w-[180px]">
+              <p className="text-xs text-slate-500 dark:text-[#A7EBF2]/70 mt-0.5 truncate max-w-[190px]">
                 {noteTitle || 'Enter password to unlock'}
               </p>
             </div>
@@ -79,7 +89,8 @@ export function UnlockModal({
           <button
             type="button"
             onClick={onClose}
-            className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors cursor-pointer"
+            className="p-1 rounded-full text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors cursor-pointer"
+            title="Close"
           >
             <X className="w-4 h-4" />
           </button>
@@ -101,12 +112,13 @@ export function UnlockModal({
                 }}
                 placeholder="Password..."
                 autoFocus
-                className="w-full px-3.5 py-2 pr-10 text-sm rounded-xl bg-slate-50 dark:bg-[#022859] border border-slate-200 dark:border-[#26658C] text-[#011C40] dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#54ACBF]"
+                className="w-full px-3.5 py-2.5 pr-10 text-sm rounded-xl bg-slate-50 dark:bg-[#011C40] border border-slate-200 dark:border-[#26658C] text-[#011C40] dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#54ACBF]"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword((prev) => !prev)}
                 className="absolute right-3 p-1 text-slate-400 hover:text-slate-600 dark:hover:text-white cursor-pointer"
+                title={showPassword ? 'Hide password' : 'Show password'}
               >
                 {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
@@ -118,7 +130,7 @@ export function UnlockModal({
             )}
           </div>
 
-          <div className="flex items-center justify-end gap-2.5 pt-2">
+          <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-slate-100 dark:border-[#26658C]/60">
             <Button
               type="button"
               variant="ghost"
@@ -133,7 +145,7 @@ export function UnlockModal({
               variant="primary"
               size="sm"
               disabled={isSubmitting}
-              className="flex items-center gap-1.5 px-4"
+              className="flex items-center gap-1.5 px-4 font-semibold"
             >
               {isSubmitting ? (
                 <>
@@ -150,6 +162,7 @@ export function UnlockModal({
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

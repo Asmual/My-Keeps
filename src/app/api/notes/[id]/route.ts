@@ -33,7 +33,7 @@ export async function GET(
 
     return NextResponse.json({
       success: true,
-      data: { ...rest, id: String(_id) },
+      data: { ...rest, id: String(_id), isLocked: Boolean(rest.isLocked) },
     });
   } catch (error) {
     return NextResponse.json(
@@ -53,19 +53,16 @@ export async function PATCH(
     await connectToDatabase();
 
     const updatePayload = { ...body };
-    if (updatePayload.password && typeof updatePayload.password === 'string' && updatePayload.password.trim().length > 0) {
-      updatePayload.password = hashNotePassword(updatePayload.password.trim());
-      updatePayload.isLocked = true;
-    } else if (updatePayload.isLocked === false) {
-      updatePayload.password = null;
-    }
+    // Lock and password are managed exclusively via dedicated /lock and /unlock routes
+    delete updatePayload.password;
+    delete updatePayload.isLocked;
 
     const query = mongoose.isValidObjectId(id)
       ? { $or: [{ _id: new mongoose.Types.ObjectId(id) }, { id }] }
       : { id };
 
     const updatedNote = await NoteModel.findOneAndUpdate(query, updatePayload, {
-      new: true,
+      returnDocument: 'after',
       runValidators: true,
     }).lean();
 
@@ -85,7 +82,7 @@ export async function PATCH(
 
     return NextResponse.json({
       success: true,
-      data: { ...rest, id: String(_id) },
+      data: { ...rest, id: String(_id), isLocked: Boolean(rest.isLocked) },
     });
   } catch (error) {
     return NextResponse.json(
@@ -109,12 +106,12 @@ export async function DELETE(
 
     const deleted = await NoteModel.findOneAndDelete(query);
     if (!deleted) {
-      return NextResponse.json({ success: false, error: 'Note not found in MongoDB' }, { status: 404 });
+      return NextResponse.json({ success: false, error: 'Note not found' }, { status: 404 });
     }
 
     return NextResponse.json({
       success: true,
-      message: 'Note permanently deleted from MongoDB',
+      message: 'Note permanently deleted',
     });
   } catch (error) {
     return NextResponse.json(

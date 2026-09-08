@@ -13,9 +13,9 @@ export async function POST(
     const body = await request.json();
     const { password } = body;
 
-    if (!password || typeof password !== 'string' || password.trim().length === 0) {
+    if (!password || typeof password !== 'string' || password.trim().length < 4) {
       return NextResponse.json(
-        { success: false, error: 'Password is required to lock note' },
+        { success: false, error: 'Password must be at least 4 characters' },
         { status: 400 }
       );
     }
@@ -26,29 +26,35 @@ export async function POST(
       ? { $or: [{ _id: new mongoose.Types.ObjectId(id) }, { id }] }
       : { id };
 
-    const note = await NoteModel.findOne(query);
-    if (!note) {
+    const updated = await NoteModel.findOneAndUpdate(
+      query,
+      {
+        $set: {
+          isLocked: true,
+          password: hashNotePassword(password.trim()),
+        },
+      },
+      { returnDocument: 'after' }
+    ).lean();
+
+    if (!updated) {
       return NextResponse.json({ success: false, error: 'Note not found' }, { status: 404 });
     }
 
-    note.isLocked = true;
-    note.password = hashNotePassword(password.trim());
-    await note.save();
-
-    const obj = (note.toObject() as unknown) as Record<string, unknown>;
-    delete obj.password;
-    delete obj.__v;
-
-    // Mask sensitive fields in response
-    obj.content = '';
-    obj.images = [];
-    obj.checklist = [];
-    obj.audioUrl = null;
+    const { _id, password: _pwd, __v, ...rest } = (updated as unknown) as Record<string, unknown>;
 
     return NextResponse.json({
       success: true,
       message: 'Note locked successfully',
-      data: { ...obj, id: String(obj._id) },
+      data: {
+        ...rest,
+        id: String(_id),
+        isLocked: true,
+        content: '',
+        images: [],
+        checklist: [],
+        audioUrl: null,
+      },
     });
   } catch (error) {
     return NextResponse.json(
