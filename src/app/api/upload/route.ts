@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
       const body = await request.json();
       fileData = body.file || null;
       if (body.type === 'voice' || body.type === 'audio') {
-        resourceType = 'video'; // Cloudinary handles audio via video resource_type
+        resourceType = 'video';
         folder = 'my-keeps/audio';
       } else if (body.type === 'avatar') {
         resourceType = 'image';

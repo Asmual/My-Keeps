@@ -10,7 +10,7 @@ import {
   Search,
   X,
   LayoutGrid,
-  List,
+  LayoutList,
   Sun,
   Moon,
   LogOut,
@@ -36,6 +36,7 @@ export function Header() {
   const { resolvedTheme, toggleTheme } = useTheme();
 
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [profileImage, setProfileImage] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -118,9 +119,9 @@ export function Header() {
     : 'U';
 
   return (
-    <header className="sticky top-0 z-30 flex items-center justify-between h-16 px-4 md:px-6 bg-white/95 dark:bg-[#011C40]/95 backdrop-blur-md border-b border-[#A7EBF2]/50 dark:border-[#26658C] transition-colors">
+    <header className="sticky top-0 z-30 flex items-center justify-between h-16 px-3 sm:px-4 md:px-6 bg-white/95 dark:bg-[#011C40]/95 backdrop-blur-md border-b border-[#A7EBF2]/50 dark:border-[#26658C] transition-colors">
       {/* Left branding and hamburger */}
-      <div className="flex items-center gap-3 min-w-[180px] sm:min-w-[200px]">
+      <div className="flex items-center gap-2 sm:gap-3">
         <Button
           variant="icon"
           onClick={toggleSidebar}
@@ -130,24 +131,24 @@ export function Header() {
           <Menu className="w-5 h-5" />
         </Button>
 
-        <Link href="/" className="flex items-center gap-2.5 select-none group">
+        <Link href="/" className="flex items-center gap-2 select-none group">
           <Image
             src="/images/MK-logo.png"
             alt="My Keeps Logo"
-            width={36}
-            height={36}
-            className="w-9 h-9 rounded-full object-contain shadow-sm group-hover:scale-105 transition-transform"
+            width={34}
+            height={34}
+            className="w-8 h-8 sm:w-9 sm:h-9 rounded-full object-contain shadow-sm group-hover:scale-105 transition-transform"
             priority
           />
-          <span className="font-bold text-lg tracking-tight text-[#011C40] dark:text-white hidden sm:inline-block">
+          <span className="font-bold text-base sm:text-lg tracking-tight text-[#011C40] dark:text-white">
             My Keeps
           </span>
         </Link>
       </div>
 
-      {/* Center Omnibox Search Bar (Luna pill design) */}
-      <div className="flex-1 max-w-2xl mx-2 md:mx-6">
-        <div className="relative flex items-center">
+      {/* Center Omnibox Search Bar: Desktop/Tablet only (hidden on mobile) */}
+      <div className="hidden sm:flex flex-1 max-w-2xl mx-3 md:mx-6">
+        <div className="relative flex items-center w-full">
           <Search className="absolute left-3.5 w-4 h-4 text-[#54ACBF] pointer-events-none" />
           <input
             type="text"
@@ -169,9 +170,51 @@ export function Header() {
         </div>
       </div>
 
+      {/* Mobile Search Overlay when toggled */}
+      {isMobileSearchOpen && (
+        <div className="sm:hidden absolute inset-x-0 top-0 h-16 bg-white dark:bg-[#011C40] z-40 flex items-center px-3 gap-2 border-b border-[#A7EBF2] dark:border-[#26658C] animate-in fade-in slide-in-from-top-2 duration-200">
+          <Search className="w-4 h-4 text-[#54ACBF] shrink-0 ml-1" />
+          <input
+            type="text"
+            autoFocus
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search notes & tags..."
+            className="flex-1 h-10 px-2 bg-transparent text-[#011C40] dark:text-white placeholder-slate-400 text-sm focus:outline-none"
+          />
+          {searchQuery && (
+            <button
+              type="button"
+              onClick={() => setSearchQuery('')}
+              className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-white"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => setIsMobileSearchOpen(false)}
+            className="px-2.5 py-1 text-xs font-semibold text-[#54ACBF] hover:text-[#023859] dark:hover:text-white"
+          >
+            Done
+          </button>
+        </div>
+      )}
+
       {/* Right controls */}
-      <div className="flex items-center gap-1.5 sm:gap-2">
-        {/* Toggle Grid/List */}
+      <div className="flex items-center gap-1 sm:gap-2">
+        {/* Mobile Search Icon Toggle */}
+        <Button
+          variant="icon"
+          onClick={() => setIsMobileSearchOpen((prev) => !prev)}
+          className="sm:hidden text-[#011C40] dark:text-[#A7EBF2]"
+          title="Search notes"
+          aria-label="Search notes"
+        >
+          <Search className="w-5 h-5 text-[#54ACBF]" />
+        </Button>
+
+        {/* Toggle Grid/List with distinct LayoutList icon */}
         <Button
           variant="icon"
           onClick={toggleViewMode}
@@ -179,9 +222,9 @@ export function Header() {
           aria-label="Toggle view mode"
         >
           {viewMode === 'grid' ? (
-            <List className="w-5 h-5" />
+            <LayoutList className="w-5 h-5 text-[#023859] dark:text-[#A7EBF2]" />
           ) : (
-            <LayoutGrid className="w-5 h-5" />
+            <LayoutGrid className="w-5 h-5 text-[#023859] dark:text-[#A7EBF2]" />
           )}
         </Button>
 
@@ -202,12 +245,12 @@ export function Header() {
         {/* Auth Section */}
         {session?.user ? (
           // Logged In User Avatar & Dropdown
-          <div className="relative ml-1" ref={menuRef}>
+          <div className="relative ml-0.5 sm:ml-1" ref={menuRef}>
             <button
               type="button"
               onClick={() => setShowUserMenu((prev) => !prev)}
               title={session.user.name || session.user.email}
-              className="flex items-center justify-center w-8 h-8 rounded-full overflow-hidden bg-gradient-to-tr from-[#023859] via-[#26658C] to-[#54ACBF] text-white font-semibold text-xs ring-2 ring-[#A7EBF2] dark:ring-[#26658C] shadow-sm cursor-pointer hover:opacity-90 transition-opacity"
+              className="flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 rounded-full overflow-hidden bg-gradient-to-tr from-[#023859] via-[#26658C] to-[#54ACBF] text-white font-bold text-xs sm:text-sm ring-2 ring-[#54ACBF] dark:ring-[#A7EBF2]/70 shadow-sm cursor-pointer hover:scale-105 transition-transform"
             >
               {activeAvatar ? (
                 <img
@@ -230,6 +273,19 @@ export function Header() {
                     {session.user.email}
                   </p>
                 </div>
+
+                {/* Mobile Search option inside Profile dropdown */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowUserMenu(false);
+                    setIsMobileSearchOpen(true);
+                  }}
+                  className="sm:hidden w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-[#011C40] dark:text-[#A7EBF2] hover:bg-[#A7EBF2]/20 dark:hover:bg-[#26658C]/50 transition-colors cursor-pointer mb-1"
+                >
+                  <Search className="w-4 h-4 text-[#54ACBF]" />
+                  <span>Search Notes</span>
+                </button>
 
                 <button
                   type="button"
@@ -255,13 +311,13 @@ export function Header() {
             )}
           </div>
         ) : (
-          // Unauthenticated Guest Controls (Signature Dark Blue primary button)
-          <div className="flex items-center gap-1.5 ml-1">
+          // Unauthenticated Guest Controls
+          <div className="flex items-center gap-1 ml-0.5 sm:ml-1">
             <Link href="/login">
               <Button
                 variant="ghost"
                 size="sm"
-                className="text-xs font-semibold px-2.5 sm:px-3 h-8"
+                className="text-xs font-semibold px-2 sm:px-3 h-8"
               >
                 <UserIcon className="w-3.5 h-3.5 sm:mr-1" />
                 <span className="hidden sm:inline">Sign In</span>
@@ -271,7 +327,7 @@ export function Header() {
               <Button
                 variant="primary"
                 size="sm"
-                className="text-xs font-semibold px-3.5 h-8 bg-[#023859] hover:bg-[#26658C] text-white"
+                className="text-xs font-semibold px-3 h-8 bg-[#023859] hover:bg-[#26658C] text-white"
               >
                 Sign Up
               </Button>

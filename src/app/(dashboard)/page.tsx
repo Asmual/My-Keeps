@@ -5,8 +5,6 @@ import { useNotes } from '@/hooks/useNotes';
 import { CreateNoteBar } from '@/components/notes/CreateNoteBar';
 import { NoteGrid } from '@/components/notes/NoteGrid';
 
-import { StickyNote } from 'lucide-react';
-
 export default function NotesPage() {
   const { notes } = useNotes();
 
@@ -24,19 +22,9 @@ export default function NotesPage() {
   );
 
   return (
-    <div className="max-w-7xl mx-auto">
+    <div className="max-w-7xl mx-auto space-y-6">
       {/* Google Keep-inspired Create Note Box */}
       <CreateNoteBar defaultNoteType="text" />
-
-      <div className="flex items-center gap-2 mb-6 pb-4 border-b border-neutral-200/60 dark:border-neutral-800/60">
-        <StickyNote className="w-5 h-5 text-[#54ACBF]" />
-        <h1 className="text-xl font-semibold text-neutral-900 dark:text-neutral-100">
-          Text Notes
-        </h1>
-        <span className="text-xs text-neutral-400 dark:text-neutral-500">
-          ({textNotes.length} notes)
-        </span>
-      </div>
 
       <NoteGrid notes={textNotes} emptyType="notes" />
     </div>
