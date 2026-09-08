@@ -41,6 +41,7 @@ export interface Note {
   noteType?: 'text' | 'checklist' | 'image' | 'voice';
   images?: string[];
   audioUrl?: string | null;
+  isLocked?: boolean;
   createdAt: string;
   updatedAt: string;
 }

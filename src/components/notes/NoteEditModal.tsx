@@ -18,12 +18,15 @@ import {
   Pause,
   ChevronRight,
   Check,
+  Lock,
 } from 'lucide-react';
 import { GripVertical } from '@/components/ui/GripIcon';
 import { useNotes } from '@/hooks/useNotes';
 import { NOTE_COLORS } from '@/lib/constants';
 import { ColorPicker } from './ColorPicker';
 import { VoiceRecorder } from './VoiceRecorder';
+import { LockModal } from './LockModal';
+import { UnlockModal } from './UnlockModal';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
@@ -43,7 +46,13 @@ function NoteEditModalContent({ note, onClose }: NoteEditModalContentProps) {
     archiveNote,
     unarchiveNote,
     trashNote,
+    lockNote,
+    removeLock,
   } = useNotes();
+
+  const [isLocked, setIsLocked] = useState(Boolean(note.isLocked));
+  const [isLockModalOpen, setIsLockModalOpen] = useState(false);
+  const [isRemoveLockModalOpen, setIsRemoveLockModalOpen] = useState(false);
 
   const [title, setTitle] = useState(note.title || '');
   const [content, setContent] = useState(note.content || '');
@@ -153,6 +162,7 @@ function NoteEditModalContent({ note, onClose }: NoteEditModalContentProps) {
       noteType: finalNoteType,
       images: finalImages,
       audioUrl: finalAudioUrl,
+      isLocked,
     });
     onClose();
   }, [
@@ -167,6 +177,7 @@ function NoteEditModalContent({ note, onClose }: NoteEditModalContentProps) {
     checklist,
     images,
     audioUrl,
+    isLocked,
     updateNote,
     onClose,
   ]);
@@ -285,6 +296,13 @@ function NoteEditModalContent({ note, onClose }: NoteEditModalContentProps) {
               className="w-full min-w-0 bg-transparent font-semibold text-lg text-[#011C40] dark:text-white placeholder-slate-400 dark:placeholder-[#A7EBF2]/50 focus:outline-none"
             />
             <div className="flex items-center gap-1 shrink-0">
+              {isLocked && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 shrink-0">
+                  <Lock className="w-3 h-3" />
+                  <span>Locked</span>
+                </span>
+              )}
+
               <button
                 type="button"
                 onClick={() => setIsImportant((prev) => !prev)}
@@ -655,6 +673,27 @@ function NoteEditModalContent({ note, onClose }: NoteEditModalContentProps) {
                 </button>
               )}
 
+              {/* Lock / Unlock button */}
+              <button
+                type="button"
+                onClick={() => {
+                  if (isLocked) {
+                    setIsRemoveLockModalOpen(true);
+                  } else {
+                    setIsLockModalOpen(true);
+                  }
+                }}
+                title={isLocked ? 'Remove password protection' : 'Lock note with password'}
+                className={cn(
+                  'p-1.5 rounded-full transition-colors cursor-pointer',
+                  isLocked
+                    ? 'text-amber-500 bg-amber-100 dark:bg-amber-950/60'
+                    : 'text-slate-600 dark:text-[#A7EBF2]/80 hover:bg-[#A7EBF2]/20 dark:hover:bg-[#26658C]/50'
+                )}
+              >
+                <Lock className="w-4 h-4" />
+              </button>
+
               {note.isArchived ? (
                 <button
                   type="button"
@@ -739,6 +778,68 @@ function NoteEditModalContent({ note, onClose }: NoteEditModalContentProps) {
         description="Are you sure you want to delete this voice memo from the note?"
         confirmText="Delete Voice Memo"
         variant="danger"
+      />
+
+      {/* Set note password modal */}
+      <LockModal
+        isOpen={isLockModalOpen}
+        onClose={() => setIsLockModalOpen(false)}
+        noteTitle={title || note.title}
+        onLock={async (password) => {
+          let finalNoteType: 'text' | 'checklist' | 'image' | 'voice' = noteType;
+          let finalChecklist = checklist.length > 0 ? checklist : undefined;
+          let finalImages = images;
+          let finalAudioUrl = audioUrl;
+
+          if (noteType === 'text') {
+            finalNoteType = 'text';
+            finalChecklist = undefined;
+            finalImages = [];
+            finalAudioUrl = null;
+          } else if (noteType === 'checklist') {
+            finalNoteType = 'checklist';
+            finalImages = [];
+            finalAudioUrl = null;
+          } else if (noteType === 'image') {
+            finalNoteType = 'image';
+            finalChecklist = undefined;
+            finalAudioUrl = null;
+          } else if (noteType === 'voice') {
+            finalNoteType = 'voice';
+            finalChecklist = undefined;
+            finalImages = [];
+          }
+
+          await updateNote(note.id, {
+            title: title.trim(),
+            content: content.trim(),
+            color,
+            isPinned,
+            isImportant,
+            labels,
+            checklist: finalChecklist,
+            noteType: finalNoteType,
+            images: finalImages,
+            audioUrl: finalAudioUrl,
+          });
+          await lockNote(note.id, password);
+          onClose();
+        }}
+      />
+
+      {/* Remove note password lock modal */}
+      <UnlockModal
+        isOpen={isRemoveLockModalOpen}
+        onClose={() => setIsRemoveLockModalOpen(false)}
+        noteTitle={title || note.title}
+        onUnlock={async (password) => {
+          const success = await removeLock(note.id, password);
+          if (success) {
+            setIsLocked(false);
+            return true;
+          }
+          return false;
+        }}
       />
     </>
   );

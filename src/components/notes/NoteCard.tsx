@@ -15,6 +15,8 @@ import {
   Play,
   Pause,
   ChevronRight,
+  Lock,
+  LockKeyhole,
 } from 'lucide-react';
 import { Note } from '@/types/note';
 import { NOTE_COLORS } from '@/lib/constants';
@@ -22,6 +24,8 @@ import { useNotes } from '@/hooks/useNotes';
 import { ColorPicker } from './ColorPicker';
 import { Badge } from '@/components/ui/Badge';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
+import { LockModal } from './LockModal';
+import { UnlockModal } from './UnlockModal';
 import { cn, formatDate } from '@/lib/utils';
 import toast from 'react-hot-toast';
 
@@ -47,6 +51,8 @@ export function NoteCard({ note, isTrashView = false }: NoteCardProps) {
     toggleCheckItem,
     selectedNoteIds,
     toggleSelectNote,
+    lockNote,
+    unlockNote,
   } = useNotes();
 
   const [showTagInput, setShowTagInput] = useState(false);
@@ -54,6 +60,8 @@ export function NoteCard({ note, isTrashView = false }: NoteCardProps) {
   const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = useState(false);
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
   const [showCompleted, setShowCompleted] = useState(false);
+  const [isLockModalOpen, setIsLockModalOpen] = useState(false);
+  const [isUnlockModalOpen, setIsUnlockModalOpen] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const isSelected = selectedNoteIds.includes(note.id);
@@ -62,6 +70,10 @@ export function NoteCard({ note, isTrashView = false }: NoteCardProps) {
 
   const handleCardClick = () => {
     if (isTrashView) return;
+    if (note.isLocked) {
+      setIsUnlockModalOpen(true);
+      return;
+    }
     if (!requireAuth('edit notes')) return;
     setActiveEditNote(note);
   };
@@ -119,7 +131,7 @@ export function NoteCard({ note, isTrashView = false }: NoteCardProps) {
 
       <div>
         {/* Attached images preview */}
-        {note.images && note.images.length > 0 && (
+        {!note.isLocked && note.images && note.images.length > 0 && (
           <div className="mb-3 -mx-4 sm:-mx-5 -mt-4 sm:-mt-5 rounded-t-2xl overflow-hidden border-b border-black/5 dark:border-white/10">
             <div
               className={cn(
@@ -146,13 +158,25 @@ export function NoteCard({ note, isTrashView = false }: NoteCardProps) {
 
         {/* Top Header: Title & Action Icons (Pin & Important) */}
         <div className="flex items-start justify-between gap-2 mb-2">
-          {note.title ? (
-            <h3 className="font-semibold text-[#011C40] dark:text-white text-base leading-snug break-words flex-1">
-              {note.title}
-            </h3>
-          ) : (
-            <div className="flex-1" />
-          )}
+          <div className="flex items-center gap-2 flex-1 min-w-0">
+            {note.isLocked && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 shrink-0">
+                <Lock className="w-2.5 h-2.5" />
+                <span>Locked</span>
+              </span>
+            )}
+            {note.title ? (
+              <h3 className="font-semibold text-[#011C40] dark:text-white text-base leading-snug break-words truncate">
+                {note.title}
+              </h3>
+            ) : note.isLocked ? (
+              <h3 className="font-semibold text-slate-500 dark:text-[#A7EBF2]/70 text-sm leading-snug italic">
+                Locked Note
+              </h3>
+            ) : (
+              <div className="flex-1" />
+            )}
+          </div>
 
           {!isTrashView && (
             <div className="flex items-center gap-0.5 shrink-0">
@@ -206,146 +230,162 @@ export function NoteCard({ note, isTrashView = false }: NoteCardProps) {
           )}
         </div>
 
-        {/* Voice Note audio player */}
-        {note.audioUrl && (
-          <div
-            onClick={(e) => e.stopPropagation()}
-            className="mb-3 p-2 rounded-xl bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/10 flex items-center gap-2.5 text-xs"
-          >
-            <button
-              type="button"
-              onClick={() => {
-                if (!note.audioUrl) return;
-                if (!audioRef.current || audioRef.current.src !== note.audioUrl) {
-                  const audio = new Audio(note.audioUrl);
-                  audio.onended = () => setIsPlayingAudio(false);
-                  audio.onerror = () => {
-                    toast.error('Could not play audio memo');
-                    setIsPlayingAudio(false);
-                  };
-                  audioRef.current = audio;
-                }
-                if (isPlayingAudio) {
-                  audioRef.current.pause();
-                  setIsPlayingAudio(false);
-                } else {
-                  audioRef.current.play().catch(() => {
-                    toast.error('Failed to play audio memo');
-                    setIsPlayingAudio(false);
-                  });
-                  setIsPlayingAudio(true);
-                }
-              }}
-              className="p-1.5 rounded-full bg-[#54ACBF] text-white hover:bg-[#26658C] transition-colors cursor-pointer"
-              title={isPlayingAudio ? 'Pause' : 'Play voice memo'}
-            >
-              {isPlayingAudio ? (
-                <Pause className="w-3 h-3 fill-current" />
-              ) : (
-                <Play className="w-3 h-3 fill-current ml-0.5" />
-              )}
-            </button>
-            <span className="font-medium text-[#011C40] dark:text-[#A7EBF2] text-[11px]">
-              {isPlayingAudio ? 'Playing voice note...' : 'Voice memo'}
-            </span>
+        {note.isLocked ? (
+          <div className="py-7 px-3 flex flex-col items-center justify-center text-center space-y-1.5 rounded-xl bg-black/5 dark:bg-white/5 border border-dashed border-black/10 dark:border-white/10 my-2 cursor-pointer">
+            <div className="p-2.5 rounded-full bg-amber-500/15 text-amber-500">
+              <LockKeyhole className="w-5 h-5" />
+            </div>
+            <p className="text-xs font-semibold text-slate-700 dark:text-slate-200">
+              This note is locked
+            </p>
+            <p className="text-[11px] text-slate-400 dark:text-[#A7EBF2]/60">
+              Click to enter password and view
+            </p>
           </div>
-        )}
-
-        {/* Content Body */}
-        {note.content && (
-          <p className="text-sm text-slate-700 dark:text-slate-200 whitespace-pre-wrap break-words leading-relaxed line-clamp-8 mb-3">
-            {note.content}
-          </p>
-        )}
-
-        {/* Checklist preview */}
-        {note.checklist && note.checklist.length > 0 && (() => {
-          const uncompletedItems = note.checklist.filter((item) => !item.completed);
-          const completedItems = note.checklist.filter((item) => item.completed);
-
-          return (
-            <div className="space-y-2 mb-3">
-              {/* Active uncompleted items */}
-              {uncompletedItems.length > 0 && (
-                <div className="space-y-1">
-                  {uncompletedItems.slice(0, 6).map((item) => (
-                    <div
-                      key={item.id}
-                      onClick={(e) => handleToggleCheckItem(e, item.id)}
-                      className="flex items-center gap-2.5 py-1 px-1.5 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 cursor-pointer transition-colors group/item"
-                      title="Click to complete"
-                    >
-                      {/* Google Keep style custom checkbox */}
-                      <button
-                        type="button"
-                        onClick={(e) => handleToggleCheckItem(e, item.id)}
-                        className="w-4 h-4 sm:w-5 sm:h-5 rounded-md border-2 border-slate-400 dark:border-[#54ACBF] group-hover/item:border-[#023859] dark:group-hover/item:border-white transition-colors flex items-center justify-center shrink-0 bg-white/40 dark:bg-black/20"
-                        title="Mark completed"
-                      />
-                      <span className="text-sm sm:text-base text-slate-800 dark:text-slate-100 truncate flex-1 select-none font-normal">
-                        {item.text}
-                      </span>
-                    </div>
-                  ))}
-                  {uncompletedItems.length > 6 && (
-                    <p className="text-xs text-[#54ACBF] font-medium italic pt-0.5 px-1.5">
-                      +{uncompletedItems.length - 6} more uncompleted items
-                    </p>
+        ) : (
+          <>
+            {/* Voice Note audio player */}
+            {note.audioUrl && (
+              <div
+                onClick={(e) => e.stopPropagation()}
+                className="mb-3 p-2 rounded-xl bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/10 flex items-center gap-2.5 text-xs"
+              >
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!note.audioUrl) return;
+                    if (!audioRef.current || audioRef.current.src !== note.audioUrl) {
+                      const audio = new Audio(note.audioUrl);
+                      audio.onended = () => setIsPlayingAudio(false);
+                      audio.onerror = () => {
+                        toast.error('Could not play audio memo');
+                        setIsPlayingAudio(false);
+                      };
+                      audioRef.current = audio;
+                    }
+                    if (isPlayingAudio) {
+                      audioRef.current.pause();
+                      setIsPlayingAudio(false);
+                    } else {
+                      audioRef.current.play().catch(() => {
+                        toast.error('Failed to play audio memo');
+                        setIsPlayingAudio(false);
+                      });
+                      setIsPlayingAudio(true);
+                    }
+                  }}
+                  className="p-1.5 rounded-full bg-[#54ACBF] text-white hover:bg-[#26658C] transition-colors cursor-pointer"
+                  title={isPlayingAudio ? 'Pause' : 'Play voice memo'}
+                >
+                  {isPlayingAudio ? (
+                    <Pause className="w-3 h-3 fill-current" />
+                  ) : (
+                    <Play className="w-3 h-3 fill-current ml-0.5" />
                   )}
-                </div>
-              )}
+                </button>
+                <span className="font-medium text-[#011C40] dark:text-[#A7EBF2] text-[11px]">
+                  {isPlayingAudio ? 'Playing voice note...' : 'Voice memo'}
+                </span>
+              </div>
+            )}
 
-              {/* Collapsible Completed items section (Google Keep & Google Docs/Sheets style) */}
-              {completedItems.length > 0 && (
-                <div className="pt-2 border-t border-black/5 dark:border-white/10 mt-1">
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setShowCompleted((prev) => !prev);
-                    }}
-                    className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 dark:text-[#A7EBF2]/70 hover:text-[#011C40] dark:hover:text-white mb-1 transition-colors cursor-pointer select-none"
-                  >
-                    <ChevronRight
-                      className={cn(
-                        'w-3.5 h-3.5 transition-transform duration-200',
-                        showCompleted && 'rotate-90'
-                      )}
-                    />
-                    <span>
-                      {completedItems.length} completed {completedItems.length === 1 ? 'item' : 'items'}
-                    </span>
-                  </button>
+            {/* Content Body */}
+            {note.content && (
+              <p className="text-sm text-slate-700 dark:text-slate-200 whitespace-pre-wrap break-words leading-relaxed line-clamp-8 mb-3">
+                {note.content}
+              </p>
+            )}
 
-                  {showCompleted && (
-                    <div className="space-y-1 pl-1.5 animate-in fade-in duration-150">
-                      {completedItems.map((item) => (
+            {/* Checklist preview */}
+            {note.checklist && note.checklist.length > 0 && (() => {
+              const uncompletedItems = note.checklist.filter((item) => !item.completed);
+              const completedItems = note.checklist.filter((item) => item.completed);
+
+              return (
+                <div className="space-y-2 mb-3">
+                  {/* Active uncompleted items */}
+                  {uncompletedItems.length > 0 && (
+                    <div className="space-y-1">
+                      {uncompletedItems.slice(0, 6).map((item) => (
                         <div
                           key={item.id}
                           onClick={(e) => handleToggleCheckItem(e, item.id)}
-                          className="flex items-center gap-2.5 py-0.5 px-1.5 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 cursor-pointer transition-colors group/item"
-                          title="Click to restore to uncompleted"
+                          className="flex items-center gap-2.5 py-1 px-1.5 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 cursor-pointer transition-colors group/item"
+                          title="Click to complete"
                         >
+                          {/* Google Keep style custom checkbox */}
                           <button
                             type="button"
                             onClick={(e) => handleToggleCheckItem(e, item.id)}
-                            className="w-4 h-4 sm:w-5 sm:h-5 rounded-md bg-[#023859] dark:bg-[#54ACBF] border-2 border-[#023859] dark:border-[#54ACBF] flex items-center justify-center text-white dark:text-[#011C40] shrink-0 shadow-xs"
-                            title="Mark uncompleted"
-                          >
-                            <Check className="w-3 h-3 sm:w-3.5 sm:h-3.5 stroke-[3]" />
-                          </button>
-                          <span className="text-sm sm:text-base line-through decoration-2 decoration-slate-400 dark:decoration-[#A7EBF2]/50 text-slate-400 dark:text-[#A7EBF2]/50 truncate flex-1 select-none">
+                            className="w-4 h-4 sm:w-5 sm:h-5 rounded-md border-2 border-slate-400 dark:border-[#54ACBF] group-hover/item:border-[#023859] dark:group-hover/item:border-white transition-colors flex items-center justify-center shrink-0 bg-white/40 dark:bg-black/20"
+                            title="Mark completed"
+                          />
+                          <span className="text-sm sm:text-base text-slate-800 dark:text-slate-100 truncate flex-1 select-none font-normal">
                             {item.text}
                           </span>
                         </div>
                       ))}
+                      {uncompletedItems.length > 6 && (
+                        <p className="text-xs text-[#54ACBF] font-medium italic pt-0.5 px-1.5">
+                          +{uncompletedItems.length - 6} more uncompleted items
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Collapsible Completed items section (Google Keep & Google Docs/Sheets style) */}
+                  {completedItems.length > 0 && (
+                    <div className="pt-2 border-t border-black/5 dark:border-white/10 mt-1">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowCompleted((prev) => !prev);
+                        }}
+                        className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 dark:text-[#A7EBF2]/70 hover:text-[#011C40] dark:hover:text-white mb-1 transition-colors cursor-pointer select-none"
+                      >
+                        <ChevronRight
+                          className={cn(
+                            'w-3.5 h-3.5 transition-transform duration-200',
+                            showCompleted && 'rotate-90'
+                          )}
+                        />
+                        <span>
+                          {completedItems.length} completed {completedItems.length === 1 ? 'item' : 'items'}
+                        </span>
+                      </button>
+
+                      {showCompleted && (
+                        <div className="space-y-1 pl-1.5 animate-in fade-in duration-150">
+                          {completedItems.map((item) => (
+                            <div
+                              key={item.id}
+                              onClick={(e) => handleToggleCheckItem(e, item.id)}
+                              className="flex items-center gap-2.5 py-0.5 px-1.5 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 cursor-pointer transition-colors group/item"
+                              title="Click to restore to uncompleted"
+                            >
+                              <button
+                                type="button"
+                                onClick={(e) => handleToggleCheckItem(e, item.id)}
+                                className="w-4 h-4 sm:w-5 sm:h-5 rounded-md bg-[#023859] dark:bg-[#54ACBF] border-2 border-[#023859] dark:border-[#54ACBF] flex items-center justify-center text-white dark:text-[#011C40] shrink-0 shadow-xs"
+                                title="Mark uncompleted"
+                              >
+                                <Check className="w-3 h-3 sm:w-3.5 sm:h-3.5 stroke-[3]" />
+                              </button>
+                              <span className="text-sm sm:text-base line-through decoration-2 decoration-slate-400 dark:decoration-[#A7EBF2]/50 text-slate-400 dark:text-[#A7EBF2]/50 truncate flex-1 select-none">
+                                {item.text}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
-              )}
-            </div>
-          );
-        })()}
+              );
+            })()}
+          </>
+        )}
 
         {/* Labels / Tags (Soft Ice Blue with dark text) */}
         {note.labels && note.labels.length > 0 && (
@@ -431,6 +471,28 @@ export function NoteCard({ note, isTrashView = false }: NoteCardProps) {
               <Tag className="w-3.5 h-3.5" />
             </button>
 
+            {/* Lock / Unlock button */}
+            <button
+              type="button"
+              onClick={() => {
+                if (!requireAuth('manage note lock')) return;
+                if (note.isLocked) {
+                  setIsUnlockModalOpen(true);
+                } else {
+                  setIsLockModalOpen(true);
+                }
+              }}
+              title={note.isLocked ? 'Unlock note' : 'Lock note with password'}
+              className={cn(
+                'p-1.5 rounded-full transition-colors cursor-pointer',
+                note.isLocked
+                  ? 'text-amber-500 hover:bg-amber-100 dark:hover:bg-amber-950/60'
+                  : 'text-slate-600 dark:text-[#A7EBF2]/80 hover:bg-[#A7EBF2]/20 dark:hover:bg-[#26658C]/50'
+              )}
+            >
+              <Lock className="w-3.5 h-3.5" />
+            </button>
+
             {note.isArchived ? (
               <button
                 type="button"
@@ -500,6 +562,29 @@ export function NoteCard({ note, isTrashView = false }: NoteCardProps) {
         confirmText="Delete"
         cancelText="Cancel"
         variant="danger"
+      />
+
+      <LockModal
+        isOpen={isLockModalOpen}
+        onClose={() => setIsLockModalOpen(false)}
+        noteTitle={note.title}
+        onLock={async (password) => {
+          await lockNote(note.id, password);
+        }}
+      />
+
+      <UnlockModal
+        isOpen={isUnlockModalOpen}
+        onClose={() => setIsUnlockModalOpen(false)}
+        noteTitle={note.title}
+        onUnlock={async (password) => {
+          const fullNote = await unlockNote(note.id, password);
+          if (fullNote) {
+            setActiveEditNote(fullNote);
+            return true;
+          }
+          return false;
+        }}
       />
     </div>
   );

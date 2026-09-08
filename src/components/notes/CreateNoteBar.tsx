@@ -17,11 +17,13 @@ import {
   Pause,
   ChevronRight,
   Check,
+  Lock,
 } from 'lucide-react';
 import { GripVertical } from '@/components/ui/GripIcon';
 import { useNotes } from '@/hooks/useNotes';
 import { ColorPicker } from './ColorPicker';
 import { VoiceRecorder } from './VoiceRecorder';
+import { LockModal } from './LockModal';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
 import { NOTE_COLORS } from '@/lib/constants';
 import { NoteColorId, CheckItem } from '@/types/note';
@@ -45,6 +47,9 @@ export function CreateNoteBar({
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [isPinned, setIsPinned] = useState(false);
+  const [isLocked, setIsLocked] = useState(false);
+  const [lockPassword, setLockPassword] = useState('');
+  const [isLockModalOpen, setIsLockModalOpen] = useState(false);
   const [color, setColor] = useState<NoteColorId>('default');
   const [labels, setLabels] = useState<string[]>([]);
   const [newLabelInput, setNewLabelInput] = useState('');
@@ -168,12 +173,16 @@ export function CreateNoteBar({
       noteType,
       images: finalImages,
       audioUrl: finalAudioUrl,
+      isLocked,
+      password: isLocked && lockPassword ? lockPassword : null,
     };
 
     // Reset state immediately to prevent duplicate creation
     setTitle('');
     setContent('');
     setIsPinned(false);
+    setIsLocked(false);
+    setLockPassword('');
     setIsImportant(defaultImportant);
     setColor('default');
     setLabels([]);
@@ -202,6 +211,8 @@ export function CreateNoteBar({
     isChecklistMode,
     defaultNoteType,
     defaultImportant,
+    isLocked,
+    lockPassword,
   ]);
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -404,6 +415,13 @@ export function CreateNoteBar({
                 className="w-full bg-transparent font-semibold text-base text-[#011C40] dark:text-white placeholder-slate-400 dark:placeholder-[#A7EBF2]/50 focus:outline-none"
               />
               <div className="flex items-center gap-1 shrink-0">
+                {isLocked && (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 shrink-0">
+                    <Lock className="w-2.5 h-2.5" />
+                    <span>Locked</span>
+                  </span>
+                )}
+
                 <button
                   type="button"
                   onClick={() => setIsImportant((prev) => !prev)}
@@ -745,6 +763,30 @@ export function CreateNoteBar({
                   <Tag className="w-4 h-4" />
                 </button>
 
+                {/* Lock / Unlock button */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!requireAuth('lock notes')) return;
+                    if (isLocked) {
+                      setIsLocked(false);
+                      setLockPassword('');
+                      toast('Lock removed from new note');
+                    } else {
+                      setIsLockModalOpen(true);
+                    }
+                  }}
+                  title={isLocked ? 'Remove password protection' : 'Lock note with password'}
+                  className={cn(
+                    'p-1.5 rounded-full transition-colors cursor-pointer',
+                    isLocked
+                      ? 'text-amber-500 bg-amber-100 dark:bg-amber-950/60'
+                      : 'text-slate-600 dark:text-[#A7EBF2]/80 hover:bg-[#A7EBF2]/20 dark:hover:bg-[#26658C]/50'
+                  )}
+                >
+                  <Lock className="w-4 h-4" />
+                </button>
+
                 {/* Add image button - ONLY for image notes */}
                 {defaultNoteType === 'image' && (
                   <button
@@ -815,6 +857,16 @@ export function CreateNoteBar({
         description="Are you sure you want to delete this voice memo attachment?"
         confirmText="Delete Voice Memo"
         variant="danger"
+      />
+
+      <LockModal
+        isOpen={isLockModalOpen}
+        onClose={() => setIsLockModalOpen(false)}
+        noteTitle={title || 'New Note'}
+        onLock={async (password) => {
+          setIsLocked(true);
+          setLockPassword(password);
+        }}
       />
     </div>
   );

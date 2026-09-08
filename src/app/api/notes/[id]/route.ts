@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/db/mongoose';
 import { NoteModel } from '@/models/Note';
-
+import { hashNotePassword } from '@/lib/security';
 import mongoose from 'mongoose';
 
 export async function GET(
@@ -21,8 +21,15 @@ export async function GET(
       return NextResponse.json({ success: false, error: 'Note not found' }, { status: 404 });
     }
 
-    const { _id, ...rest } = (note as unknown) as Record<string, unknown>;
+    const { _id, password, ...rest } = (note as unknown) as Record<string, unknown>;
     delete rest.__v;
+
+    if (rest.isLocked) {
+      rest.content = '';
+      rest.images = [];
+      rest.checklist = [];
+      rest.audioUrl = null;
+    }
 
     return NextResponse.json({
       success: true,
@@ -45,11 +52,19 @@ export async function PATCH(
     const body = await request.json();
     await connectToDatabase();
 
+    const updatePayload = { ...body };
+    if (updatePayload.password && typeof updatePayload.password === 'string' && updatePayload.password.trim().length > 0) {
+      updatePayload.password = hashNotePassword(updatePayload.password.trim());
+      updatePayload.isLocked = true;
+    } else if (updatePayload.isLocked === false) {
+      updatePayload.password = null;
+    }
+
     const query = mongoose.isValidObjectId(id)
       ? { $or: [{ _id: new mongoose.Types.ObjectId(id) }, { id }] }
       : { id };
 
-    const updatedNote = await NoteModel.findOneAndUpdate(query, body, {
+    const updatedNote = await NoteModel.findOneAndUpdate(query, updatePayload, {
       new: true,
       runValidators: true,
     }).lean();
@@ -58,8 +73,15 @@ export async function PATCH(
       return NextResponse.json({ success: false, error: 'Note not found' }, { status: 404 });
     }
 
-    const { _id, ...rest } = (updatedNote as unknown) as Record<string, unknown>;
+    const { _id, password, ...rest } = (updatedNote as unknown) as Record<string, unknown>;
     delete rest.__v;
+
+    if (rest.isLocked) {
+      rest.content = '';
+      rest.images = [];
+      rest.checklist = [];
+      rest.audioUrl = null;
+    }
 
     return NextResponse.json({
       success: true,

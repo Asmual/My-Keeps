@@ -18,6 +18,8 @@ export interface INoteDocument extends Document {
   noteType: 'text' | 'checklist' | 'image' | 'voice';
   images: string[];
   audioUrl?: string | null;
+  isLocked: boolean;
+  password?: string | null;
   userId?: string | null;
   createdAt: Date;
   updatedAt: Date;
@@ -62,6 +64,8 @@ const NoteSchema = new Schema<INoteDocument>(
     noteType: { type: String, default: 'text', enum: ['text', 'checklist', 'image', 'voice'], index: true },
     images: [{ type: String }],
     audioUrl: { type: String, default: null },
+    isLocked: { type: Boolean, default: false, index: true },
+    password: { type: String, default: null },
     userId: { type: String, default: null, index: true },
   },
   {
@@ -73,6 +77,7 @@ const NoteSchema = new Schema<INoteDocument>(
           ret.id = String(ret._id);
         }
         delete ret.__v;
+        delete ret.password;
         return ret;
       },
     },

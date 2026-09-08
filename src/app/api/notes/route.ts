@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import mongoose from 'mongoose';
 import { connectToDatabase } from '@/lib/db/mongoose';
 import { NoteModel } from '@/models/Note';
+import { hashNotePassword } from '@/lib/security';
 
 export async function GET(request: NextRequest) {
   try {
@@ -48,8 +49,14 @@ export async function GET(request: NextRequest) {
 
     const notes = rawNotes.map((n) => {
       const doc = (n as unknown) as Record<string, unknown>;
-      const { _id, ...rest } = doc;
+      const { _id, password, ...rest } = doc;
       delete rest.__v;
+      if (rest.isLocked) {
+        rest.content = '';
+        rest.images = [];
+        rest.checklist = [];
+        rest.audioUrl = null;
+      }
       return {
         ...rest,
         id: String(_id),
@@ -70,6 +77,13 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     await connectToDatabase();
 
+    let isLocked = Boolean(body.isLocked);
+    let passwordHash: string | null = null;
+    if (body.password && typeof body.password === 'string' && body.password.trim().length > 0) {
+      isLocked = true;
+      passwordHash = hashNotePassword(body.password.trim());
+    }
+
     const created = await NoteModel.create({
       title: body.title || '',
       content: body.content || '',
@@ -83,10 +97,20 @@ export async function POST(request: NextRequest) {
       noteType: body.noteType || 'text',
       images: body.images || [],
       audioUrl: body.audioUrl || null,
+      isLocked,
+      password: passwordHash,
       userId: body.userId || null,
     });
 
-    const noteObj = created.toObject();
+    const noteObj = (created.toObject() as unknown) as Record<string, unknown>;
+    delete noteObj.password;
+    delete noteObj.__v;
+    if (isLocked) {
+      noteObj.content = '';
+      noteObj.images = [];
+      noteObj.checklist = [];
+      noteObj.audioUrl = null;
+    }
     const result = {
       ...noteObj,
       id: String(noteObj._id),

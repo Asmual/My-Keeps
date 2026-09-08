@@ -62,6 +62,9 @@ interface NotesContextType {
   addLabel: (id: string, label: string) => Promise<void>;
   removeLabel: (id: string, label: string) => Promise<void>;
   toggleCheckItem: (noteId: string, itemId: string) => Promise<void>;
+  lockNote: (id: string, password: string) => Promise<boolean>;
+  unlockNote: (id: string, password: string) => Promise<Note | null>;
+  removeLock: (id: string, password: string) => Promise<boolean>;
 }
 
 const NotesContext = createContext<NotesContextType | undefined>(undefined);
@@ -276,11 +279,23 @@ export function NotesProvider({ children }: { children: React.ReactNode }) {
   const updateNote = async (id: string, updates: Partial<Note>): Promise<void> => {
     if (!requireAuth('update notes')) return;
 
-    // Optimistic UI update
+    // Optimistic UI update with lock masking
+    const isLockedNote =
+      updates.isLocked !== undefined
+        ? updates.isLocked
+        : (notes.find((x) => x.id === id)?.isLocked ?? false);
+
     setNotes((prev) =>
       prev.map((n) =>
         n.id === id
-          ? { ...n, ...updates, updatedAt: new Date().toISOString() }
+          ? {
+              ...n,
+              ...updates,
+              ...(isLockedNote
+                ? { content: '', images: [], checklist: [], audioUrl: null }
+                : {}),
+              updatedAt: new Date().toISOString(),
+            }
           : n
       )
     );
@@ -289,11 +304,17 @@ export function NotesProvider({ children }: { children: React.ReactNode }) {
     }
 
     try {
-      await fetch(`/api/notes/${id}`, {
+      const res = await fetch(`/api/notes/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updates),
       });
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && json.data) {
+          setNotes((prev) => prev.map((n) => (n.id === id ? json.data : n)));
+        }
+      }
     } catch (err) {
       console.error('Error updating note in MongoDB:', err);
     }
@@ -728,6 +749,90 @@ export function NotesProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  // LOCK NOTE
+  const lockNote = async (id: string, password: string): Promise<boolean> => {
+    if (!requireAuth('lock notes')) return false;
+    try {
+      const res = await fetch(`/api/notes/${id}/lock`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password }),
+      });
+      const json = await res.json();
+      if (res.ok && json.success) {
+        setNotes((prev) =>
+          prev.map((n) =>
+            n.id === id
+              ? {
+                  ...n,
+                  isLocked: true,
+                  content: '',
+                  images: [],
+                  checklist: [],
+                  audioUrl: null,
+                }
+              : n
+          )
+        );
+        return true;
+      } else {
+        toast.error(json.error || json.message || 'Failed to lock note');
+        return false;
+      }
+    } catch (err) {
+      console.error('Error locking note:', err);
+      toast.error('Failed to lock note');
+      return false;
+    }
+  };
+
+  // UNLOCK NOTE
+  const unlockNote = async (id: string, password: string): Promise<Note | null> => {
+    try {
+      const res = await fetch(`/api/notes/${id}/unlock`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password, action: 'unlock' }),
+      });
+      const json = await res.json();
+      if (res.ok && json.success && json.data) {
+        const fullNote = json.data as Note;
+        setNotes((prev) => prev.map((n) => (n.id === id ? fullNote : n)));
+        return fullNote;
+      }
+      return null;
+    } catch (err) {
+      console.error('Error unlocking note:', err);
+      return null;
+    }
+  };
+
+  // REMOVE LOCK
+  const removeLock = async (id: string, password: string): Promise<boolean> => {
+    if (!requireAuth('remove note lock')) return false;
+    try {
+      const res = await fetch(`/api/notes/${id}/unlock`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password, action: 'remove-lock' }),
+      });
+      const json = await res.json();
+      if (res.ok && json.success && json.data) {
+        const updatedNote = json.data as Note;
+        setNotes((prev) => prev.map((n) => (n.id === id ? updatedNote : n)));
+        toast.success('Note lock removed');
+        return true;
+      } else {
+        toast.error(json.error || json.message || 'Failed to remove lock');
+        return false;
+      }
+    } catch (err) {
+      console.error('Error removing note lock:', err);
+      toast.error('Failed to remove lock');
+      return false;
+    }
+  };
+
   return (
     <NotesContext.Provider
       value={{
@@ -777,6 +882,9 @@ export function NotesProvider({ children }: { children: React.ReactNode }) {
         addLabel,
         removeLabel,
         toggleCheckItem,
+        lockNote,
+        unlockNote,
+        removeLock,
       }}
     >
       {children}
