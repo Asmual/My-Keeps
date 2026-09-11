@@ -4,6 +4,7 @@ import React, { createContext, useContext, useEffect, useState, useMemo, useCall
 import { useRouter } from 'next/navigation';
 import { Note, NoteColorId, ViewMode } from '@/types/note';
 import { useSession } from '@/lib/auth-client';
+import { AuthPromptModal } from '@/components/auth/AuthPromptModal';
 import toast from 'react-hot-toast';
 
 interface NotesContextType {
@@ -40,6 +41,9 @@ interface NotesContextType {
   isAuthenticated: boolean;
   currentUser: { id: string; email: string; name?: string } | null;
   requireAuth: (actionName?: string) => boolean;
+  isAuthModalOpen: boolean;
+  openAuthModal: (actionName?: string) => void;
+  closeAuthModal: () => void;
   createNote: (noteData: Partial<Note>) => Promise<Note | null>;
   updateNote: (id: string, updates: Partial<Note>) => Promise<void>;
   togglePin: (id: string) => Promise<void>;
@@ -113,35 +117,46 @@ export function NotesProvider({ children }: { children: React.ReactNode }) {
       }
     : null;
 
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [authActionTitle, setAuthActionTitle] = useState('create notes');
+
+  const openAuthModal = useCallback((actionName = 'create notes') => {
+    setAuthActionTitle(actionName);
+    setIsAuthModalOpen(true);
+  }, []);
+
+  const closeAuthModal = useCallback(() => {
+    setIsAuthModalOpen(false);
+  }, []);
+
   // Enforce authentication guard on actions
   const requireAuth = useCallback(
     (actionName = 'perform this action'): boolean => {
       if (!session?.user) {
-        toast.error(`Please sign in to ${actionName}`, {
-          icon: '🔒',
-          duration: 3500,
-        });
-        router.push('/login');
+        setAuthActionTitle(actionName);
+        setIsAuthModalOpen(true);
         return false;
       }
       return true;
     },
-    [session, router]
+    [session]
   );
 
   // Fetch real data directly from MongoDB via API (used for manual refresh)
   const fetchNotes = useCallback(async () => {
+    if (!userId) {
+      setNotes([]);
+      setIsLoading(false);
+      return;
+    }
+
     setIsLoading(true);
     try {
       if (typeof window !== 'undefined') {
         localStorage.removeItem('mykeeps-notes');
       }
 
-      const params = new URLSearchParams({ filter: 'all' });
-      if (userId) {
-        params.set('userId', userId);
-      }
-
+      const params = new URLSearchParams({ filter: 'all', userId });
       const res = await fetch(`/api/notes?${params.toString()}`);
       if (res.ok) {
         const json = await res.json();
@@ -161,16 +176,20 @@ export function NotesProvider({ children }: { children: React.ReactNode }) {
     let ignore = false;
 
     async function loadInitialNotes() {
+      // If user is not logged in, clear notes immediately and stop loading
+      if (!userId) {
+        setNotes([]);
+        setIsLoading(false);
+        return;
+      }
+
+      setIsLoading(true);
       try {
         if (typeof window !== 'undefined') {
           localStorage.removeItem('mykeeps-notes');
         }
 
-        const params = new URLSearchParams({ filter: 'all' });
-        if (userId) {
-          params.set('userId', userId);
-        }
-
+        const params = new URLSearchParams({ filter: 'all', userId });
         const res = await fetch(`/api/notes?${params.toString()}`);
         if (res.ok) {
           const json = await res.json();
@@ -304,10 +323,14 @@ export function NotesProvider({ children }: { children: React.ReactNode }) {
     }
 
     try {
-      const res = await fetch(`/api/notes/${id}`, {
+      const params = new URLSearchParams();
+      if (userId) params.set('userId', userId);
+      const url = params.toString() ? `/api/notes/${id}?${params.toString()}` : `/api/notes/${id}`;
+
+      const res = await fetch(url, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updates),
+        body: JSON.stringify({ ...updates, userId }),
       });
       if (res.ok) {
         const json = await res.json();
@@ -436,7 +459,10 @@ export function NotesProvider({ children }: { children: React.ReactNode }) {
     if (activeEditNote?.id === id) setActiveEditNoteState(null);
 
     try {
-      await fetch(`/api/notes/${id}`, { method: 'DELETE' });
+      const params = new URLSearchParams();
+      if (userId) params.set('userId', userId);
+      const url = params.toString() ? `/api/notes/${id}?${params.toString()}` : `/api/notes/${id}`;
+      await fetch(url, { method: 'DELETE' });
     } catch (err) {
       console.error('Error deleting note from MongoDB:', err);
     }
@@ -612,9 +638,14 @@ export function NotesProvider({ children }: { children: React.ReactNode }) {
     toast.error(`${count} notes permanently deleted`);
 
     try {
-      await Promise.all(
-        idsToDelete.map((id) => fetch(`/api/notes/${id}`, { method: 'DELETE' }))
-      );
+      const params = new URLSearchParams();
+      if (userId) params.set('userId', userId);
+      const url = params.toString() ? `/api/notes?${params.toString()}` : '/api/notes';
+      await fetch(url, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: idsToDelete }),
+      });
     } catch (err) {
       console.error('Error in batch delete permanently:', err);
     }
@@ -756,7 +787,7 @@ export function NotesProvider({ children }: { children: React.ReactNode }) {
       const res = await fetch(`/api/notes/${id}/lock`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password }),
+        body: JSON.stringify({ password, userId }),
       });
       const json = await res.json();
       if (res.ok && json.success) {
@@ -792,7 +823,7 @@ export function NotesProvider({ children }: { children: React.ReactNode }) {
       const res = await fetch(`/api/notes/${id}/unlock`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password, action: 'unlock' }),
+        body: JSON.stringify({ password, action: 'unlock', userId }),
       });
       const json = await res.json();
       if (res.ok && json.success && json.data) {
@@ -814,7 +845,7 @@ export function NotesProvider({ children }: { children: React.ReactNode }) {
       const res = await fetch(`/api/notes/${id}/unlock`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password, action: 'remove-lock' }),
+        body: JSON.stringify({ password, action: 'remove-lock', userId }),
       });
       const json = await res.json();
       if (res.ok && json.success && json.data) {
@@ -860,6 +891,9 @@ export function NotesProvider({ children }: { children: React.ReactNode }) {
         isAuthenticated,
         currentUser,
         requireAuth,
+        isAuthModalOpen,
+        openAuthModal,
+        closeAuthModal,
         createNote,
         updateNote,
         togglePin,
@@ -888,6 +922,11 @@ export function NotesProvider({ children }: { children: React.ReactNode }) {
       }}
     >
       {children}
+      <AuthPromptModal
+        isOpen={isAuthModalOpen}
+        onClose={closeAuthModal}
+        actionTitle={authActionTitle}
+      />
     </NotesContext.Provider>
   );
 }

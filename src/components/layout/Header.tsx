@@ -105,7 +105,7 @@ export function Header() {
     try {
       await signOut();
       toast.success('Signed out successfully');
-      router.push('/login');
+      router.push('/');
       router.refresh();
     } catch {
       toast.error('Failed to sign out');

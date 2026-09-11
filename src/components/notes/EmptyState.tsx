@@ -1,3 +1,5 @@
+import React from 'react';
+import Link from 'next/link';
 import {
   Lightbulb,
   Archive,
@@ -9,7 +11,12 @@ import {
   Image as ImageIcon,
   Mic,
   LucideIcon,
+  Sparkles,
+  LogIn,
 } from 'lucide-react';
+import { useNotes } from '@/hooks/useNotes';
+import { GoogleAuthButton } from '@/components/auth/GoogleAuthButton';
+import { Button } from '@/components/ui/Button';
 
 type EmptyStateType =
   | 'notes'
@@ -35,6 +42,8 @@ interface StateConfig {
 }
 
 export function EmptyState({ type, customMessage }: EmptyStateProps) {
+  const { isAuthenticated, openAuthModal } = useNotes();
+
   const configs: Record<EmptyStateType, StateConfig> = {
     notes: {
       icon: Lightbulb,
@@ -92,6 +101,35 @@ export function EmptyState({ type, customMessage }: EmptyStateProps) {
     },
   };
 
+  // Dedicated guest welcome state when user is not logged in
+  if (!isAuthenticated && type === 'notes') {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 px-4 text-center max-w-md mx-auto animate-in fade-in zoom-in-95 duration-200">
+        <div className="p-4 rounded-3xl text-[#54ACBF] bg-[#54ACBF]/15 dark:bg-[#023859] border border-[#54ACBF]/40 mb-4 shadow-inner">
+          <Sparkles className="w-10 h-10 animate-pulse" />
+        </div>
+        <h3 className="text-xl font-bold text-[#011C40] dark:text-white mb-1.5">
+          Welcome to My Keeps
+        </h3>
+        <p className="text-xs sm:text-sm text-slate-500 dark:text-[#A7EBF2]/80 leading-relaxed mb-6 max-w-sm">
+          All your thoughts, checklists, and voice memos securely saved under your personal account. Sign in to start taking notes.
+        </p>
+
+        <div className="w-full max-w-xs space-y-2.5">
+          <GoogleAuthButton text="Continue with Google" />
+          <Button
+            variant="outline"
+            onClick={() => openAuthModal('view and create notes')}
+            className="w-full h-10 rounded-xl text-xs font-semibold border-[#A7EBF2] dark:border-[#26658C]"
+          >
+            <LogIn className="w-3.5 h-3.5 mr-1.5" />
+            <span>More Sign In Options</span>
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   const current = configs[type];
   const Icon = current.icon;
 
@@ -106,6 +144,15 @@ export function EmptyState({ type, customMessage }: EmptyStateProps) {
       <p className="text-sm text-slate-500 dark:text-[#A7EBF2]/70 leading-relaxed">
         {current.description}
       </p>
+      {!isAuthenticated && (
+        <button
+          type="button"
+          onClick={() => openAuthModal('access this section')}
+          className="mt-4 text-xs font-semibold text-[#54ACBF] hover:underline cursor-pointer"
+        >
+          Sign in to view your items &rarr;
+        </button>
+      )}
     </div>
   );
 }
