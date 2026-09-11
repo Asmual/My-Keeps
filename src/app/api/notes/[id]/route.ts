@@ -10,11 +10,17 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
+    const { searchParams } = new URL(request.url);
+    const userId = searchParams.get('userId');
     await connectToDatabase();
 
-    const query = mongoose.isValidObjectId(id)
+    const baseQuery = mongoose.isValidObjectId(id)
       ? { $or: [{ _id: new mongoose.Types.ObjectId(id) }, { id }] }
       : { id };
+
+    const query = userId && userId.trim()
+      ? { ...baseQuery, userId: userId.trim() }
+      : baseQuery;
 
     const note = await NoteModel.findOne(query).lean();
     if (!note) {
@@ -49,17 +55,26 @@ export async function PATCH(
 ) {
   try {
     const { id } = await params;
+    const { searchParams } = new URL(request.url);
+    const userIdParam = searchParams.get('userId');
     const body = await request.json();
+    const userId = body.userId || userIdParam;
+
     await connectToDatabase();
 
     const updatePayload = { ...body };
     // Lock and password are managed exclusively via dedicated /lock and /unlock routes
     delete updatePayload.password;
     delete updatePayload.isLocked;
+    delete updatePayload.userId;
 
-    const query = mongoose.isValidObjectId(id)
+    const baseQuery = mongoose.isValidObjectId(id)
       ? { $or: [{ _id: new mongoose.Types.ObjectId(id) }, { id }] }
       : { id };
+
+    const query = userId && typeof userId === 'string' && userId.trim()
+      ? { ...baseQuery, userId: userId.trim() }
+      : baseQuery;
 
     const updatedNote = await NoteModel.findOneAndUpdate(query, updatePayload, {
       returnDocument: 'after',
@@ -98,11 +113,17 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
+    const { searchParams } = new URL(request.url);
+    const userId = searchParams.get('userId');
     await connectToDatabase();
 
-    const query = mongoose.isValidObjectId(id)
+    const baseQuery = mongoose.isValidObjectId(id)
       ? { $or: [{ _id: new mongoose.Types.ObjectId(id) }, { id }] }
       : { id };
+
+    const query = userId && userId.trim()
+      ? { ...baseQuery, userId: userId.trim() }
+      : baseQuery;
 
     const deleted = await NoteModel.findOneAndDelete(query);
     if (!deleted) {

@@ -10,13 +10,16 @@ export async function GET(request: NextRequest) {
     const filter = searchParams.get('filter'); // 'all', 'archive', 'trash'
     const userId = searchParams.get('userId');
 
+    // Strict multi-tenant isolation: Unauthenticated requests or missing userId return empty array
+    if (!userId || !userId.trim()) {
+      return NextResponse.json({ success: true, count: 0, data: [] });
+    }
+
     await connectToDatabase();
 
-    const query: Record<string, unknown> = {};
-
-    if (userId) {
-      query.userId = userId;
-    }
+    const query: Record<string, unknown> = {
+      userId: userId.trim(),
+    };
 
     if (filter === 'archive') {
       query.isArchived = true;
@@ -76,6 +79,14 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
+
+    if (!body.userId || typeof body.userId !== 'string' || !body.userId.trim()) {
+      return NextResponse.json(
+        { success: false, error: 'Authentication required. Please sign in to create notes.' },
+        { status: 401 }
+      );
+    }
+
     await connectToDatabase();
 
     let isLocked = Boolean(body.isLocked);
@@ -100,7 +111,7 @@ export async function POST(request: NextRequest) {
       audioUrl: body.audioUrl || null,
       isLocked,
       password: passwordHash,
-      userId: body.userId || null,
+      userId: body.userId.trim(),
     });
 
     const noteObj = (created.toObject() as unknown) as Record<string, unknown>;
@@ -129,14 +140,21 @@ export async function POST(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    await connectToDatabase();
     const { searchParams } = new URL(request.url);
     const action = searchParams.get('action');
     const userId = searchParams.get('userId');
 
+    if (!userId || !userId.trim()) {
+      return NextResponse.json(
+        { success: false, error: 'Authentication required' },
+        { status: 401 }
+      );
+    }
+
+    await connectToDatabase();
+
     if (action === 'empty-trash') {
-      const query: Record<string, unknown> = { isTrashed: true };
-      if (userId) query.userId = userId;
+      const query: Record<string, unknown> = { isTrashed: true, userId: userId.trim() };
 
       const res = await NoteModel.deleteMany(query);
       return NextResponse.json({
@@ -167,8 +185,8 @@ export async function DELETE(request: NextRequest) {
           { _id: { $in: objectIds } },
           { id: { $in: ids } },
         ],
+        userId: userId.trim(),
       };
-      if (userId) query.userId = userId;
 
       const res = await NoteModel.deleteMany(query);
       return NextResponse.json({

@@ -11,7 +11,7 @@ export async function POST(
   try {
     const { id } = await params;
     const body = await request.json();
-    const { password } = body;
+    const { password, userId } = body;
 
     if (!password || typeof password !== 'string' || password.trim().length < 4) {
       return NextResponse.json(
@@ -22,9 +22,13 @@ export async function POST(
 
     await connectToDatabase();
 
-    const query = mongoose.isValidObjectId(id)
+    const baseQuery = mongoose.isValidObjectId(id)
       ? { $or: [{ _id: new mongoose.Types.ObjectId(id) }, { id }] }
       : { id };
+
+    const query = userId && typeof userId === 'string' && userId.trim()
+      ? { ...baseQuery, userId: userId.trim() }
+      : baseQuery;
 
     const updated = await NoteModel.findOneAndUpdate(
       query,

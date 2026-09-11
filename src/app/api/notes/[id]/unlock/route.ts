@@ -11,13 +11,17 @@ export async function POST(
   try {
     const { id } = await params;
     const body = await request.json();
-    const { password, action = 'unlock' } = body;
+    const { password, action = 'unlock', userId } = body;
 
     await connectToDatabase();
 
-    const query = mongoose.isValidObjectId(id)
+    const baseQuery = mongoose.isValidObjectId(id)
       ? { $or: [{ _id: new mongoose.Types.ObjectId(id) }, { id }] }
       : { id };
+
+    const query = userId && typeof userId === 'string' && userId.trim()
+      ? { ...baseQuery, userId: userId.trim() }
+      : baseQuery;
 
     const note = await NoteModel.findOne(query);
     if (!note) {
