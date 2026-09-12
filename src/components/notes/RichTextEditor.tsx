@@ -15,7 +15,6 @@ import {
   X,
   Mic,
   MicOff,
-  Sparkles,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useSpeechRecognition } from '@/hooks/useSpeechRecognition';
@@ -26,7 +25,6 @@ interface RichTextEditorProps {
   placeholder?: string;
   isFullscreen?: boolean;
   minHeightClass?: string;
-  onSummarize?: () => void;
   showDictation?: boolean;
 }
 
@@ -61,7 +59,6 @@ export function RichTextEditor({
   placeholder = 'Note details...',
   isFullscreen = false,
   minHeightClass,
-  onSummarize,
   showDictation = true,
 }: RichTextEditorProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -344,7 +341,7 @@ export function RichTextEditor({
 
           {isColorMenuOpen && (
             <div
-              className="absolute left-0 top-full mt-1.5 z-50 p-2.5 rounded-2xl bg-white dark:bg-[#011C40] border border-[#A7EBF2] dark:border-[#26658C] shadow-2xl w-48 animate-in fade-in zoom-in-95 duration-150"
+              className="absolute right-0 top-full mt-1.5 z-50 p-2.5 rounded-2xl bg-white dark:bg-[#011C40] border border-[#A7EBF2] dark:border-[#26658C] shadow-2xl w-48 max-w-[calc(100vw-2rem)] animate-in fade-in zoom-in-95 duration-150"
               onMouseDown={(e) => e.stopPropagation()}
             >
               <div className="flex items-center justify-between pb-1.5 mb-1.5 border-b border-black/5 dark:border-white/10">
@@ -425,7 +422,7 @@ export function RichTextEditor({
 
           {isHighlightMenuOpen && (
             <div
-              className="absolute left-0 top-full mt-1.5 z-50 p-2.5 rounded-2xl bg-white dark:bg-[#011C40] border border-[#A7EBF2] dark:border-[#26658C] shadow-2xl w-44 animate-in fade-in zoom-in-95 duration-150"
+              className="absolute right-0 top-full mt-1.5 z-50 p-2.5 rounded-2xl bg-white dark:bg-[#011C40] border border-[#A7EBF2] dark:border-[#26658C] shadow-2xl w-44 max-w-[calc(100vw-2rem)] animate-in fade-in zoom-in-95 duration-150"
               onMouseDown={(e) => e.stopPropagation()}
             >
               <div className="flex items-center justify-between pb-1.5 mb-1.5 border-b border-black/5 dark:border-white/10">
@@ -507,28 +504,12 @@ export function RichTextEditor({
           </div>
         )}
 
-        {/* AI Summarize Button on Top Toolbar */}
-        {onSummarize && (
-          <button
-            type="button"
-            onClick={onSummarize}
-            className={cn(
-              'flex items-center gap-1 px-2.5 py-1 rounded-lg bg-linear-to-r from-amber-500/15 to-rose-500/15 hover:from-amber-500/25 hover:to-rose-500/25 text-[#011C40] dark:text-[#A7EBF2] border border-amber-400/40 dark:border-amber-500/30 transition-all cursor-pointer font-medium shadow-xs',
-              (!showDictation || !isSpeechSupported) && 'ml-auto'
-            )}
-            title="AI Summarize Note (৩-৪টি বুলেট পয়েন্টে সামারি)"
-          >
-            <Sparkles className="w-3.5 h-3.5 text-amber-500 fill-amber-500/30" />
-            <span className="text-[11px] font-semibold">✨ AI Summarize</span>
-          </button>
-        )}
-
         <button
           type="button"
           onClick={() => applyFormat('removeFormat')}
           className={cn(
             'p-1.5 rounded-lg hover:bg-black/5 dark:hover:bg-white/10 text-slate-400 hover:text-rose-500 transition-colors cursor-pointer',
-            !onSummarize && (!showDictation || !isSpeechSupported) && 'ml-auto'
+            (!showDictation || !isSpeechSupported) && 'ml-auto'
           )}
           title="Clear Formatting"
         >
@@ -627,17 +608,6 @@ export function RichTextEditor({
               <Palette className="w-3.5 h-3.5" />
             </button>
           </div>
-
-          {onSummarize && (
-            <button
-              type="button"
-              onClick={onSummarize}
-              className="p-1.5 rounded-lg hover:bg-amber-100 dark:hover:bg-amber-950/60 text-amber-500 transition-colors cursor-pointer"
-              title="AI Summarize Note"
-            >
-              <Sparkles className="w-3.5 h-3.5 fill-current" />
-            </button>
-          )}
         </div>
       )}
 

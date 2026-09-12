@@ -316,39 +316,7 @@ export function ProfileModal({
               />
             </div>
 
-            {/* Gender Selection */}
-            <div>
-              <label className="block text-xs font-semibold text-slate-600 dark:text-[#A7EBF2]/80 mb-1.5">
-                Gender
-              </label>
-              <div className="grid grid-cols-3 gap-2">
-                {[
-                  { value: 'male', label: 'Male' },
-                  { value: 'female', label: 'Female' },
-                  { value: 'other', label: 'Other' },
-                ].map((g) => {
-                  const isSelected = gender === g.value;
-                  return (
-                    <button
-                      key={g.value}
-                      type="button"
-                      onClick={() => setGender(g.value as 'male' | 'female' | 'other')}
-                      className={cn(
-                        'flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-xs font-medium border transition-all cursor-pointer select-none',
-                        isSelected
-                          ? 'bg-[#023859] text-white dark:bg-[#54ACBF] dark:text-[#011C40] border-[#023859] dark:border-[#54ACBF] shadow-xs'
-                          : 'bg-slate-50 dark:bg-[#011C40] text-slate-700 dark:text-[#A7EBF2]/80 border-slate-200 dark:border-[#26658C] hover:border-[#54ACBF]'
-                      )}
-                    >
-                      {isSelected && <Check className="w-3.5 h-3.5" />}
-                      <span>{g.label}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Phone Number Input */}
+            {/* Phone Number Input (Above Gender) */}
             <div>
               <label className="block text-xs font-semibold text-slate-600 dark:text-[#A7EBF2]/80 mb-1">
                 Phone Number
@@ -363,6 +331,23 @@ export function ProfileModal({
                   className="w-full pl-9 pr-3.5 py-2 text-xs rounded-xl bg-slate-50 dark:bg-[#011C40] border border-slate-200 dark:border-[#26658C] text-[#011C40] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#54ACBF]/50"
                 />
               </div>
+            </div>
+
+            {/* Gender Selection (Compact dropdown at the very bottom) */}
+            <div>
+              <label className="block text-xs font-semibold text-slate-600 dark:text-[#A7EBF2]/80 mb-1">
+                Gender
+              </label>
+              <select
+                value={gender}
+                onChange={(e) => setGender(e.target.value as 'male' | 'female' | 'other' | '')}
+                className="w-full px-3.5 py-2 text-xs rounded-xl bg-slate-50 dark:bg-[#011C40] border border-slate-200 dark:border-[#26658C] text-[#011C40] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#54ACBF]/50 cursor-pointer"
+              >
+                <option value="" disabled className="dark:bg-[#011C40]">Select Gender</option>
+                <option value="male" className="dark:bg-[#011C40]">Male</option>
+                <option value="female" className="dark:bg-[#011C40]">Female</option>
+                <option value="other" className="dark:bg-[#011C40]">Other</option>
+              </select>
             </div>
 
             {/* Footer Buttons */}

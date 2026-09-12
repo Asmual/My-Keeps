@@ -11,6 +11,7 @@ interface ColorPickerProps {
   onSelectColor: (color: NoteColorId) => void;
   className?: string;
   buttonClassName?: string;
+  align?: 'left' | 'right';
 }
 
 export function ColorPicker({
@@ -18,6 +19,7 @@ export function ColorPicker({
   onSelectColor,
   className,
   buttonClassName,
+  align = 'right',
 }: ColorPickerProps) {
   const [isOpen, setIsOpen] = useState(false);
   const popoverRef = useRef<HTMLDivElement>(null);
@@ -56,7 +58,10 @@ export function ColorPicker({
       {isOpen && (
         <div
           onClick={(e) => e.stopPropagation()}
-          className="absolute z-50 bottom-full mb-2 left-0 p-2.5 bg-white dark:bg-[#023859] rounded-2xl shadow-xl border border-[#A7EBF2] dark:border-[#26658C] grid grid-cols-6 gap-2 w-[230px] max-w-[calc(100vw-2rem)] animate-in fade-in zoom-in-95 duration-150"
+          className={cn(
+            'absolute z-50 bottom-full mb-2 p-2.5 bg-white dark:bg-[#023859] rounded-2xl shadow-xl border border-[#A7EBF2] dark:border-[#26658C] grid grid-cols-6 gap-2 w-[230px] max-w-[calc(100vw-2rem)] animate-in fade-in zoom-in-95 duration-150',
+            align === 'left' ? 'left-0' : 'right-0'
+          )}
         >
           {Object.values(NOTE_COLORS).map((colorConfig) => {
             const isSelected = currentColor === colorConfig.id;

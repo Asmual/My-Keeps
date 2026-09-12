@@ -10,6 +10,7 @@ interface ReminderPickerProps {
   onSelectReminder: (reminderIso: string | null) => void;
   buttonClassName?: string;
   iconClassName?: string;
+  align?: 'left' | 'right';
 }
 
 export function ReminderPicker({
@@ -17,6 +18,7 @@ export function ReminderPicker({
   onSelectReminder,
   buttonClassName,
   iconClassName = 'w-3.5 h-3.5',
+  align = 'right',
 }: ReminderPickerProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isCustomMode, setIsCustomMode] = useState(false);
@@ -134,7 +136,10 @@ export function ReminderPicker({
       {isOpen && (
         <div
           onClick={(e) => e.stopPropagation()}
-          className="absolute z-50 bottom-full sm:bottom-auto sm:top-full left-0 sm:left-auto right-auto mt-1 mb-1 w-64 rounded-2xl bg-white dark:bg-[#011C40] border border-[#A7EBF2] dark:border-[#26658C] shadow-2xl p-2.5 text-xs text-[#011C40] dark:text-slate-200 animate-in fade-in zoom-in-95 duration-150"
+          className={cn(
+            'absolute z-50 bottom-full sm:bottom-auto sm:top-full mt-1 mb-1 w-64 max-w-[calc(100vw-2rem)] rounded-2xl bg-white dark:bg-[#011C40] border border-[#A7EBF2] dark:border-[#26658C] shadow-2xl p-2.5 text-xs text-[#011C40] dark:text-slate-200 animate-in fade-in zoom-in-95 duration-150',
+            align === 'left' ? 'left-0' : 'right-0'
+          )}
         >
           <div className="flex items-center justify-between pb-2 mb-2 border-b border-[#A7EBF2]/40 dark:border-[#26658C]">
             <span className="font-semibold text-xs text-[#011C40] dark:text-white flex items-center gap-1.5">

@@ -10,13 +10,15 @@ import {
   Check,
   X,
   Upload,
-  Languages,
   FileText,
   Sparkles,
+  Loader2,
+  Copy,
+  Plus,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
-import { useSpeechRecognition, SpeechLanguage } from '@/hooks/useSpeechRecognition';
+import { useSpeechRecognition } from '@/hooks/useSpeechRecognition';
 import { cn } from '@/lib/utils';
 import toast from 'react-hot-toast';
 
@@ -38,7 +40,9 @@ export function VoiceRecorder({
   const [audioUrl, setAudioUrl] = useState<string | null>(initialAudioUrl || null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = useState(false);
-  const [enableTranscription, setEnableTranscription] = useState(true);
+  const [isTranscribing, setIsTranscribing] = useState(false);
+  const [showTranscriptBox, setShowTranscriptBox] = useState(Boolean(initialTranscript));
+  const [hasCopied, setHasCopied] = useState(false);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -66,6 +70,7 @@ export function VoiceRecorder({
   useEffect(() => {
     if (initialTranscript && !transcript) {
       setTranscript(initialTranscript);
+      setShowTranscriptBox(true);
     }
   }, [initialTranscript, setTranscript, transcript]);
 
@@ -118,9 +123,10 @@ export function VoiceRecorder({
       mediaRecorder.start();
       setIsRecording(true);
       setRecordingTime(0);
+      setShowTranscriptBox(false);
 
-      // Also start speech recognition if enabled
-      if (enableTranscription && isSpeechSupported) {
+      // Start capturing speech in background
+      if (isSpeechSupported) {
         startListening();
       }
 
@@ -176,9 +182,66 @@ export function VoiceRecorder({
     reader.onloadend = () => {
       if (typeof reader.result === 'string') {
         setAudioUrl(reader.result);
+        setShowTranscriptBox(false);
       }
     };
     reader.readAsDataURL(file);
+  };
+
+  // Convert Recorded Audio to Text
+  const handleConvertToText = async () => {
+    if (!audioUrl) return;
+
+    setIsTranscribing(true);
+
+    try {
+      // 1. If speech was already recognized live, use it
+      if (transcript && transcript.trim().length > 0) {
+        setShowTranscriptBox(true);
+        toast.success('অডিও সফলভাবে টেক্সটে রূপান্তরিত হয়েছে!');
+        setIsTranscribing(false);
+        return;
+      }
+
+      // 2. Otherwise call backend transcription API
+      const res = await fetch('/api/ai/transcribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          audioData: audioUrl,
+          language,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (res.ok && data.text) {
+        setTranscript(data.text);
+        setShowTranscriptBox(true);
+        toast.success('অডিও সফলভাবে টেক্সটে রূপান্তরিত হয়েছে!');
+      } else {
+        toast.error(data.error || 'অডিও রূপান্তর করা সম্ভব হয়নি');
+      }
+    } catch (err) {
+      console.error('Error during audio transcription:', err);
+      toast.error('অডিও রূপান্তর ব্যর্থ হয়েছে');
+    } finally {
+      setIsTranscribing(false);
+    }
+  };
+
+  const handleCopyTranscript = () => {
+    if (!transcript) return;
+    navigator.clipboard.writeText(transcript);
+    setHasCopied(true);
+    toast.success('টেক্সট কপি করা হয়েছে');
+    setTimeout(() => setHasCopied(false), 2000);
+  };
+
+  const handleInsertToNote = () => {
+    onSaveAudio(audioUrl, transcript.trim());
+    toast.success('অডিও ও টেক্সট নোটে সেভ করা হয়েছে!');
+    if (onClose) onClose();
   };
 
   const handleSave = () => {
@@ -193,6 +256,7 @@ export function VoiceRecorder({
     setAudioUrl(null);
     setIsPlaying(false);
     resetTranscript();
+    setShowTranscriptBox(false);
   };
 
   return (
@@ -201,7 +265,7 @@ export function VoiceRecorder({
       <div className="flex items-center justify-between text-xs font-semibold text-[#011C40] dark:text-[#A7EBF2]">
         <span className="flex items-center gap-1.5">
           <Mic className="w-4 h-4 text-[#54ACBF]" />
-          <span>Voice Memo & Transcription</span>
+          <span>ভয়েস মেমো (Voice Memo)</span>
         </span>
 
         <div className="flex items-center gap-2">
@@ -257,9 +321,9 @@ export function VoiceRecorder({
                 {formatTime(recordingTime)}
               </span>
               <span className="text-xs text-rose-600/80 dark:text-rose-300 flex items-center gap-1.5">
-                <span>Recording audio...</span>
+                <span>রেকর্ডিং চলছে...</span>
                 <span className="text-[11px] opacity-70">
-                  ({language === 'bn-BD' ? 'বাংলা শুনছি' : 'Listening English'})
+                  ({language === 'bn-BD' ? 'বাংলা' : 'English'})
                 </span>
               </span>
             </div>
@@ -273,34 +337,18 @@ export function VoiceRecorder({
             </Button>
           </div>
 
-          {/* Real-time Voice to Text Preview while recording */}
-          <div className="p-3 rounded-xl bg-white/90 dark:bg-[#023859]/70 border border-[#A7EBF2]/40 dark:border-[#26658C] text-xs space-y-1">
-            <div className="flex items-center justify-between text-[11px] text-[#54ACBF] font-medium">
-              <span className="flex items-center gap-1">
-                <Sparkles className="w-3 h-3 animate-pulse" />
-                লাইভ স্পিচ ট্রানস্ক্রিপশন (Live Text):
-              </span>
-              <span className="text-[10px] text-slate-400">
-                {language === 'bn-BD' ? 'বাংলা' : 'English'}
-              </span>
-            </div>
-            <p className="text-slate-700 dark:text-slate-200 min-h-[32px] break-words italic">
-              {transcript || interimTranscript ? (
-                <>
-                  <span>{transcript} </span>
-                  <span className="opacity-60">{interimTranscript}</span>
-                </>
-              ) : (
-                <span className="text-slate-400 dark:text-slate-500 not-italic">
-                  কথা বলুন, আপনার কণ্ঠস্বর সরাসরি লেখায় রূপান্তর হবে...
-                </span>
-              )}
-            </p>
+          {/* Real-time hint while recording */}
+          <div className="px-2 py-1 text-[11px] text-slate-500 dark:text-[#A7EBF2]/70 flex items-center gap-1.5">
+            <Mic className="w-3 h-3 text-[#54ACBF] animate-pulse" />
+            <span>
+              কথা বলা শেষ হলে Stop বাটনে ক্লিক করে টেক্সটে কনভার্ট করতে পারবেন।
+            </span>
           </div>
         </div>
       ) : audioUrl ? (
-        /* Playback & Transcribed Text State */
+        /* Playback & Conversion Section */
         <div className="space-y-2.5">
+          {/* Audio Player Bar */}
           <div className="flex items-center justify-between p-2.5 rounded-xl bg-white dark:bg-[#023859] border border-slate-200 dark:border-[#26658C]">
             <div className="flex items-center gap-2.5">
               <button
@@ -316,7 +364,7 @@ export function VoiceRecorder({
               </button>
               <div className="text-xs">
                 <p className="font-semibold text-[#011C40] dark:text-white">
-                  Voice Memo Ready
+                  Voice Memo
                 </p>
                 <p className="text-[11px] text-slate-400 dark:text-[#A7EBF2]/60">
                   {isPlaying ? 'Playing...' : 'Click to listen'}
@@ -344,32 +392,80 @@ export function VoiceRecorder({
             </div>
           </div>
 
-          {/* Transcribed Text Display & Edit */}
-          {transcript && (
-            <div className="p-3 rounded-xl bg-white dark:bg-[#023859]/50 border border-[#A7EBF2]/40 dark:border-[#26658C] text-xs space-y-1.5">
+          {/* On-Demand Audio to Text Conversion Button */}
+          {!showTranscriptBox ? (
+            <button
+              type="button"
+              onClick={handleConvertToText}
+              disabled={isTranscribing}
+              className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-linear-to-r from-[#023859] to-[#26658C] hover:from-[#26658C] hover:to-[#54ACBF] text-white text-xs font-semibold shadow-md transition-all cursor-pointer hover:scale-[1.01]"
+            >
+              {isTranscribing ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin text-[#A7EBF2]" />
+                  <span>অডিও থেকে টেক্সট রূপান্তর হচ্ছে...</span>
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-4 h-4 text-[#A7EBF2]" />
+                  <span>অডিও কনভার্ট করে টেক্সট তৈরি করুন (Convert to Text)</span>
+                </>
+              )}
+            </button>
+          ) : (
+            /* Converted Text Box */
+            <div className="p-3 rounded-xl bg-white dark:bg-[#023859]/50 border border-[#A7EBF2]/40 dark:border-[#26658C] text-xs space-y-2 animate-in fade-in">
               <div className="flex items-center justify-between">
                 <span className="text-[11px] font-semibold text-[#011C40] dark:text-[#A7EBF2] flex items-center gap-1">
                   <FileText className="w-3.5 h-3.5 text-[#54ACBF]" />
-                  রূপান্তরিত টেক্সট (Transcribed Text):
+                  রূপান্তরিত টেক্সট (Converted Text):
                 </span>
-                <button
-                  type="button"
-                  onClick={resetTranscript}
-                  className="text-[10px] text-slate-400 hover:text-rose-500 transition-colors"
-                >
-                  ক্লিয়ার করুন
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleCopyTranscript}
+                    className="text-[10px] text-slate-500 hover:text-[#023859] dark:hover:text-white flex items-center gap-1"
+                  >
+                    {hasCopied ? (
+                      <Check className="w-3 h-3 text-emerald-500" />
+                    ) : (
+                      <Copy className="w-3 h-3" />
+                    )}
+                    <span>{hasCopied ? 'কপি হয়েছে' : 'কপি'}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleConvertToText}
+                    disabled={isTranscribing}
+                    className="text-[10px] text-[#54ACBF] hover:underline"
+                  >
+                    পুনরায় কনভার্ট
+                  </button>
+                </div>
               </div>
+
               <textarea
                 value={transcript}
                 onChange={(e) => setTranscript(e.target.value)}
-                rows={2}
+                rows={3}
                 className="w-full text-xs p-2 rounded-lg bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-[#54ACBF] resize-y"
-                placeholder="Transcribed voice text..."
+                placeholder="Transcribed text will appear here..."
               />
-              <p className="text-[10px] text-slate-400 dark:text-[#A7EBF2]/60">
-                💡 সেভ করার সাথে সাথে এই টেক্সট আপনার নোটে যুক্ত হয়ে যাবে, ফলে সহজে সার্চ করতে পারবেন।
-              </p>
+
+              <div className="flex items-center justify-between pt-1">
+                <p className="text-[10px] text-slate-400 dark:text-[#A7EBF2]/60">
+                  💡 এই লেখাটি দিয়ে সার্চ করলেও নোটটি খুঁজে পাওয়া যাবে।
+                </p>
+                <Button
+                  size="sm"
+                  variant="primary"
+                  onClick={handleInsertToNote}
+                  className="text-xs px-2.5 py-1 bg-[#023859] hover:bg-[#26658C] text-white flex items-center gap-1"
+                >
+                  <Plus className="w-3 h-3" />
+                  <span>নোটে যোগ করুন</span>
+                </Button>
+              </div>
             </div>
           )}
         </div>
@@ -405,22 +501,6 @@ export function VoiceRecorder({
               onChange={handleAudioFileUpload}
               className="hidden"
             />
-          </div>
-
-          {/* Auto voice-to-text option */}
-          <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-[#A7EBF2]/80 px-1">
-            <label className="flex items-center gap-1.5 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={enableTranscription}
-                onChange={(e) => setEnableTranscription(e.target.checked)}
-                className="w-3.5 h-3.5 rounded-sm text-[#54ACBF] focus:ring-[#54ACBF]"
-              />
-              <span>ভয়েস থেকে স্বয়ংক্রিয় টেক্সট রূপান্তর (Voice-to-Text)</span>
-            </label>
-            <span className="text-[10px] opacity-70">
-              {language === 'bn-BD' ? '🇧🇩 বাংলা' : '🇺🇸 English'}
-            </span>
           </div>
         </div>
       )}

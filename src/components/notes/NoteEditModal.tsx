@@ -24,7 +24,6 @@ import {
   Minimize2,
   Bell,
   Clock,
-  Sparkles,
 } from 'lucide-react';
 import { GripVertical } from '@/components/ui/GripIcon';
 import { useNotes } from '@/hooks/useNotes';
@@ -35,7 +34,6 @@ import { RichTextEditor } from './RichTextEditor';
 import { VoiceRecorder } from './VoiceRecorder';
 import { LockModal } from './LockModal';
 import { UnlockModal } from './UnlockModal';
-import { AISummaryModal } from './AISummaryModal';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
@@ -66,7 +64,6 @@ function NoteEditModalContent({ note, onClose }: NoteEditModalContentProps) {
 
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [reminder, setReminder] = useState<string | null>(note.reminder || null);
-  const [isAISummaryOpen, setIsAISummaryOpen] = useState(false);
 
   const [title, setTitle] = useState(note.title || '');
   const [content, setContent] = useState(note.content || '');
@@ -398,17 +395,6 @@ function NoteEditModalContent({ note, onClose }: NoteEditModalContentProps) {
                 </span>
               )}
 
-              {/* ✨ AI Summarize Button */}
-              <button
-                type="button"
-                onClick={() => setIsAISummaryOpen(true)}
-                className="flex items-center gap-1.5 px-2.5 py-1 sm:px-3 sm:py-1 rounded-full bg-linear-to-r from-amber-500/20 to-rose-500/20 hover:from-amber-500/30 hover:to-rose-500/30 text-[#011C40] dark:text-[#A7EBF2] border border-amber-400/40 dark:border-amber-500/30 transition-all cursor-pointer font-semibold text-xs shadow-xs shrink-0"
-                title="AI Summarize (৩-৪টি বুলেট পয়েন্টে সারসংক্ষেপ)"
-              >
-                <Sparkles className="w-3.5 h-3.5 text-amber-500 fill-amber-500/40" />
-                <span className="hidden sm:inline">✨ AI Summarize</span>
-              </button>
-
               <button
                 type="button"
                 onClick={() => setIsFullscreen((prev) => !prev)}
@@ -590,7 +576,6 @@ function NoteEditModalContent({ note, onClose }: NoteEditModalContentProps) {
               onChange={setContent}
               placeholder="Note details..."
               isFullscreen={isFullscreen}
-              onSummarize={() => setIsAISummaryOpen(true)}
               showDictation={true}
             />
 
@@ -1065,21 +1050,6 @@ function NoteEditModalContent({ note, onClose }: NoteEditModalContentProps) {
             return true;
           }
           return false;
-        }}
-      />
-
-      {/* AI Summary Modal */}
-      <AISummaryModal
-        isOpen={isAISummaryOpen}
-        onClose={() => setIsAISummaryOpen(false)}
-        noteTitle={title || note.title}
-        noteContent={content}
-        onInsertSummary={(summaryHtml, mode) => {
-          if (mode === 'prepend') {
-            setContent((prev) => `${summaryHtml}${prev}`);
-          } else {
-            setContent((prev) => `${prev}${summaryHtml}`);
-          }
         }}
       />
     </>
