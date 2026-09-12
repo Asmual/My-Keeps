@@ -109,51 +109,57 @@ Title: ${title || 'Untitled'}
 Content:
 ${cleanText}`;
 
-        const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey.trim()}`;
+        const modelsToTry = ['gemini-3.6-flash', 'gemini-2.5-flash', 'gemini-1.5-flash'];
+        let generatedText: string | undefined;
+        let successfulModel = '';
 
-        const geminiRes = await fetch(geminiUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [
-              {
-                parts: [{ text: prompt }],
-              },
-            ],
-            generationConfig: {
-              temperature: 0.3,
-              maxOutputTokens: 500,
-            },
-          }),
-        });
-
-        if (geminiRes.ok) {
-          const data: GeminiApiResponse = await geminiRes.json();
-          const generatedText =
-            data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
-
-          if (generatedText) {
-            // Split into bullet points
-            const bullets = generatedText
-              .split('\n')
-              .map((line) => line.trim().replace(/^[•\-\*]\s*/, ''))
-              .filter((line) => line.length > 0);
-
-            return NextResponse.json({
-              success: true,
-              bullets,
-              summaryText: bullets.map((b) => `• ${b}`).join('\n'),
-              model: 'gemini-1.5-flash',
-              isFallback: false,
+        for (const modelName of modelsToTry) {
+          try {
+            const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey.trim()}`;
+            const geminiRes = await fetch(geminiUrl, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                contents: [
+                  {
+                    parts: [{ text: prompt }],
+                  },
+                ],
+                generationConfig: {
+                  temperature: 0.3,
+                  maxOutputTokens: 2000,
+                },
+              }),
             });
+
+            if (geminiRes.ok) {
+              const data: GeminiApiResponse = await geminiRes.json();
+              generatedText = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+              if (generatedText) {
+                successfulModel = modelName;
+                break;
+              }
+            }
+          } catch {
+            // Try next model
           }
-        } else {
-          const errData = await geminiRes.json().catch(() => ({}));
-          console.warn('Gemini API returned error response, using fallback:', errData);
         }
-      } catch (geminiError) {
-        console.warn('Gemini API network call failed, falling back to smart extractor:', geminiError);
-      }
+
+        if (generatedText) {
+          // Split into bullet points
+          const bullets = generatedText
+            .split('\n')
+            .map((line) => line.trim().replace(/^[•\-\*]\s*/, ''))
+            .filter((line) => line.length > 0);
+
+          return NextResponse.json({
+            success: true,
+            bullets,
+            summaryText: bullets.map((b) => `• ${b}`).join('\n'),
+            model: successfulModel || 'gemini-3.6-flash',
+            isFallback: false,
+          });
+        }
     }
 
     // 2. Intelligent Extractive Fallback
