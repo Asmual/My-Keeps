@@ -10,19 +10,26 @@ import {
   Check,
   X,
   Upload,
+  Languages,
+  FileText,
+  Sparkles,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
+import { useSpeechRecognition, SpeechLanguage } from '@/hooks/useSpeechRecognition';
+import { cn } from '@/lib/utils';
 import toast from 'react-hot-toast';
 
 interface VoiceRecorderProps {
   initialAudioUrl?: string | null;
-  onSaveAudio: (audioUrl: string | null) => void;
+  initialTranscript?: string;
+  onSaveAudio: (audioUrl: string | null, transcript?: string) => void;
   onClose?: () => void;
 }
 
 export function VoiceRecorder({
   initialAudioUrl,
+  initialTranscript = '',
   onSaveAudio,
   onClose,
 }: VoiceRecorderProps) {
@@ -31,12 +38,36 @@ export function VoiceRecorder({
   const [audioUrl, setAudioUrl] = useState<string | null>(initialAudioUrl || null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = useState(false);
+  const [enableTranscription, setEnableTranscription] = useState(true);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const audioElementRef = useRef<HTMLAudioElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Web Speech Recognition for Voice-to-Text Transcription
+  const {
+    transcript,
+    interimTranscript,
+    language,
+    setLanguage,
+    startListening,
+    stopListening,
+    resetTranscript,
+    setTranscript,
+    isSupported: isSpeechSupported,
+  } = useSpeechRecognition({
+    language: 'bn-BD',
+    continuous: true,
+  });
+
+  // Populate initial transcript if provided
+  useEffect(() => {
+    if (initialTranscript && !transcript) {
+      setTranscript(initialTranscript);
+    }
+  }, [initialTranscript, setTranscript, transcript]);
 
   // Clean up on unmount
   useEffect(() => {
@@ -45,8 +76,9 @@ export function VoiceRecorder({
       if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
         mediaRecorderRef.current.stop();
       }
+      stopListening();
     };
-  }, []);
+  }, [stopListening]);
 
   // Format time mm:ss
   const formatTime = (seconds: number) => {
@@ -87,6 +119,11 @@ export function VoiceRecorder({
       setIsRecording(true);
       setRecordingTime(0);
 
+      // Also start speech recognition if enabled
+      if (enableTranscription && isSpeechSupported) {
+        startListening();
+      }
+
       timerRef.current = setInterval(() => {
         setRecordingTime((prev) => prev + 1);
       }, 1000);
@@ -105,6 +142,7 @@ export function VoiceRecorder({
         timerRef.current = null;
       }
     }
+    stopListening();
   };
 
   const togglePlayAudio = () => {
@@ -144,7 +182,7 @@ export function VoiceRecorder({
   };
 
   const handleSave = () => {
-    onSaveAudio(audioUrl);
+    onSaveAudio(audioUrl, transcript.trim());
     if (onClose) onClose();
   };
 
@@ -154,122 +192,236 @@ export function VoiceRecorder({
     }
     setAudioUrl(null);
     setIsPlaying(false);
+    resetTranscript();
   };
 
   return (
     <div className="p-3.5 rounded-2xl bg-slate-100/90 dark:bg-[#011C40] border border-[#A7EBF2] dark:border-[#26658C] space-y-3 animate-in fade-in select-none">
+      {/* Header with Title & Language Switcher */}
       <div className="flex items-center justify-between text-xs font-semibold text-[#011C40] dark:text-[#A7EBF2]">
         <span className="flex items-center gap-1.5">
           <Mic className="w-4 h-4 text-[#54ACBF]" />
-          Voice Memo
+          <span>Voice Memo & Transcription</span>
         </span>
-        {onClose && (
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-1 rounded-md text-slate-400 hover:text-slate-600 dark:hover:text-white"
-          >
-            <X className="w-3.5 h-3.5" />
-          </button>
-        )}
+
+        <div className="flex items-center gap-2">
+          {/* Language Toggle for Speech Recognition */}
+          <div className="flex items-center gap-1 bg-white/70 dark:bg-[#023859] p-0.5 rounded-lg border border-black/5 dark:border-white/10 text-[11px]">
+            <button
+              type="button"
+              onClick={() => setLanguage('bn-BD')}
+              className={cn(
+                'px-1.5 py-0.5 rounded-md transition-colors font-medium cursor-pointer',
+                language === 'bn-BD'
+                  ? 'bg-[#54ACBF] text-white'
+                  : 'text-slate-600 dark:text-slate-300 hover:text-[#011C40]'
+              )}
+              title="Speak in Bengali"
+            >
+              🇧🇩 বাংলা
+            </button>
+            <button
+              type="button"
+              onClick={() => setLanguage('en-US')}
+              className={cn(
+                'px-1.5 py-0.5 rounded-md transition-colors font-medium cursor-pointer',
+                language === 'en-US'
+                  ? 'bg-[#54ACBF] text-white'
+                  : 'text-slate-600 dark:text-slate-300 hover:text-[#011C40]'
+              )}
+              title="Speak in English"
+            >
+              🇺🇸 English
+            </button>
+          </div>
+
+          {onClose && (
+            <button
+              type="button"
+              onClick={onClose}
+              className="p-1 rounded-md text-slate-400 hover:text-slate-600 dark:hover:text-white"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Recording State */}
       {isRecording ? (
-        <div className="flex items-center justify-between p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60">
-          <div className="flex items-center gap-3">
-            <span className="w-3 h-3 rounded-full bg-rose-500 animate-ping" />
-            <span className="text-xs font-mono font-bold text-rose-600 dark:text-rose-400">
-              {formatTime(recordingTime)}
-            </span>
-            <span className="text-xs text-rose-600/80 dark:text-rose-300">
-              Recording audio...
-            </span>
+        <div className="space-y-2.5">
+          <div className="flex items-center justify-between p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60">
+            <div className="flex items-center gap-3">
+              <span className="w-3 h-3 rounded-full bg-rose-500 animate-ping" />
+              <span className="text-xs font-mono font-bold text-rose-600 dark:text-rose-400">
+                {formatTime(recordingTime)}
+              </span>
+              <span className="text-xs text-rose-600/80 dark:text-rose-300 flex items-center gap-1.5">
+                <span>Recording audio...</span>
+                <span className="text-[11px] opacity-70">
+                  ({language === 'bn-BD' ? 'বাংলা শুনছি' : 'Listening English'})
+                </span>
+              </span>
+            </div>
+            <Button
+              size="sm"
+              variant="danger"
+              onClick={stopRecording}
+              className="text-xs px-3 py-1 flex items-center gap-1.5"
+            >
+              <Square className="w-3.5 h-3.5 fill-current" /> Stop
+            </Button>
           </div>
-          <Button
-            size="sm"
-            variant="danger"
-            onClick={stopRecording}
-            className="text-xs px-3 py-1 flex items-center gap-1.5"
-          >
-            <Square className="w-3.5 h-3.5 fill-current" /> Stop
-          </Button>
+
+          {/* Real-time Voice to Text Preview while recording */}
+          <div className="p-3 rounded-xl bg-white/90 dark:bg-[#023859]/70 border border-[#A7EBF2]/40 dark:border-[#26658C] text-xs space-y-1">
+            <div className="flex items-center justify-between text-[11px] text-[#54ACBF] font-medium">
+              <span className="flex items-center gap-1">
+                <Sparkles className="w-3 h-3 animate-pulse" />
+                লাইভ স্পিচ ট্রানস্ক্রিপশন (Live Text):
+              </span>
+              <span className="text-[10px] text-slate-400">
+                {language === 'bn-BD' ? 'বাংলা' : 'English'}
+              </span>
+            </div>
+            <p className="text-slate-700 dark:text-slate-200 min-h-[32px] break-words italic">
+              {transcript || interimTranscript ? (
+                <>
+                  <span>{transcript} </span>
+                  <span className="opacity-60">{interimTranscript}</span>
+                </>
+              ) : (
+                <span className="text-slate-400 dark:text-slate-500 not-italic">
+                  কথা বলুন, আপনার কণ্ঠস্বর সরাসরি লেখায় রূপান্তর হবে...
+                </span>
+              )}
+            </p>
+          </div>
         </div>
       ) : audioUrl ? (
-        /* Playback State */
-        <div className="flex items-center justify-between p-2.5 rounded-xl bg-white dark:bg-[#023859] border border-slate-200 dark:border-[#26658C]">
-          <div className="flex items-center gap-2.5">
-            <button
-              type="button"
-              onClick={togglePlayAudio}
-              className="p-2 rounded-full bg-[#54ACBF] text-white hover:bg-[#26658C] transition-colors cursor-pointer"
-            >
-              {isPlaying ? (
-                <Pause className="w-3.5 h-3.5 fill-current" />
-              ) : (
-                <Play className="w-3.5 h-3.5 fill-current ml-0.5" />
-              )}
-            </button>
-            <div className="text-xs">
-              <p className="font-semibold text-[#011C40] dark:text-white">
-                Voice Recording
-              </p>
-              <p className="text-[11px] text-slate-400 dark:text-[#A7EBF2]/60">
-                {isPlaying ? 'Playing...' : 'Click to listen'}
-              </p>
+        /* Playback & Transcribed Text State */
+        <div className="space-y-2.5">
+          <div className="flex items-center justify-between p-2.5 rounded-xl bg-white dark:bg-[#023859] border border-slate-200 dark:border-[#26658C]">
+            <div className="flex items-center gap-2.5">
+              <button
+                type="button"
+                onClick={togglePlayAudio}
+                className="p-2 rounded-full bg-[#54ACBF] text-white hover:bg-[#26658C] transition-colors cursor-pointer"
+              >
+                {isPlaying ? (
+                  <Pause className="w-3.5 h-3.5 fill-current" />
+                ) : (
+                  <Play className="w-3.5 h-3.5 fill-current ml-0.5" />
+                )}
+              </button>
+              <div className="text-xs">
+                <p className="font-semibold text-[#011C40] dark:text-white">
+                  Voice Memo Ready
+                </p>
+                <p className="text-[11px] text-slate-400 dark:text-[#A7EBF2]/60">
+                  {isPlaying ? 'Playing...' : 'Click to listen'}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => setIsConfirmDeleteOpen(true)}
+                className="p-1.5 text-rose-500 hover:bg-rose-100 dark:hover:bg-rose-950/60 rounded-lg transition-colors cursor-pointer"
+                title="Remove voice memo"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+              <Button
+                size="sm"
+                variant="primary"
+                onClick={handleSave}
+                className="text-xs px-3 py-1 font-semibold"
+              >
+                <Check className="w-3.5 h-3.5 mr-1" /> Done
+              </Button>
             </div>
           </div>
 
-          <div className="flex items-center gap-1.5">
-            <button
-              type="button"
-              onClick={() => setIsConfirmDeleteOpen(true)}
-              className="p-1.5 text-rose-500 hover:bg-rose-100 dark:hover:bg-rose-950/60 rounded-lg transition-colors cursor-pointer"
-              title="Remove voice memo"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-            </button>
-            <Button
-              size="sm"
-              variant="primary"
-              onClick={handleSave}
-              className="text-xs px-3 py-1 font-semibold"
-            >
-              <Check className="w-3.5 h-3.5 mr-1" /> Done
-            </Button>
-          </div>
+          {/* Transcribed Text Display & Edit */}
+          {transcript && (
+            <div className="p-3 rounded-xl bg-white dark:bg-[#023859]/50 border border-[#A7EBF2]/40 dark:border-[#26658C] text-xs space-y-1.5">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-semibold text-[#011C40] dark:text-[#A7EBF2] flex items-center gap-1">
+                  <FileText className="w-3.5 h-3.5 text-[#54ACBF]" />
+                  রূপান্তরিত টেক্সট (Transcribed Text):
+                </span>
+                <button
+                  type="button"
+                  onClick={resetTranscript}
+                  className="text-[10px] text-slate-400 hover:text-rose-500 transition-colors"
+                >
+                  ক্লিয়ার করুন
+                </button>
+              </div>
+              <textarea
+                value={transcript}
+                onChange={(e) => setTranscript(e.target.value)}
+                rows={2}
+                className="w-full text-xs p-2 rounded-lg bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-[#54ACBF] resize-y"
+                placeholder="Transcribed voice text..."
+              />
+              <p className="text-[10px] text-slate-400 dark:text-[#A7EBF2]/60">
+                💡 সেভ করার সাথে সাথে এই টেক্সট আপনার নোটে যুক্ত হয়ে যাবে, ফলে সহজে সার্চ করতে পারবেন।
+              </p>
+            </div>
+          )}
         </div>
       ) : (
         /* Standby / Start Recording */
-        <div className="flex items-center justify-between gap-2">
-          <Button
-            size="sm"
-            variant="primary"
-            onClick={startRecording}
-            className="flex-1 text-xs py-2 bg-[#023859] hover:bg-[#26658C] text-white flex items-center justify-center gap-2"
-          >
-            <Mic className="w-4 h-4 text-[#A7EBF2]" />
-            <span>Record Voice Note</span>
-          </Button>
+        <div className="space-y-2.5">
+          <div className="flex items-center justify-between gap-2">
+            <Button
+              size="sm"
+              variant="primary"
+              onClick={startRecording}
+              className="flex-1 text-xs py-2 bg-[#023859] hover:bg-[#26658C] text-white flex items-center justify-center gap-2"
+            >
+              <Mic className="w-4 h-4 text-[#A7EBF2]" />
+              <span>Record Voice Memo</span>
+            </Button>
 
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={() => fileInputRef.current?.click()}
-            className="text-xs py-2 px-3 border border-slate-200 dark:border-[#26658C]"
-            title="Upload audio file"
-          >
-            <Upload className="w-3.5 h-3.5 mr-1 text-[#54ACBF]" />
-            Upload
-          </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => fileInputRef.current?.click()}
+              className="text-xs py-2 px-3 border border-slate-200 dark:border-[#26658C]"
+              title="Upload audio file"
+            >
+              <Upload className="w-3.5 h-3.5 mr-1 text-[#54ACBF]" />
+              Upload
+            </Button>
 
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="audio/*"
-            onChange={handleAudioFileUpload}
-            className="hidden"
-          />
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="audio/*"
+              onChange={handleAudioFileUpload}
+              className="hidden"
+            />
+          </div>
+
+          {/* Auto voice-to-text option */}
+          <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-[#A7EBF2]/80 px-1">
+            <label className="flex items-center gap-1.5 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={enableTranscription}
+                onChange={(e) => setEnableTranscription(e.target.checked)}
+                className="w-3.5 h-3.5 rounded-sm text-[#54ACBF] focus:ring-[#54ACBF]"
+              />
+              <span>ভয়েস থেকে স্বয়ংক্রিয় টেক্সট রূপান্তর (Voice-to-Text)</span>
+            </label>
+            <span className="text-[10px] opacity-70">
+              {language === 'bn-BD' ? '🇧🇩 বাংলা' : '🇺🇸 English'}
+            </span>
+          </div>
         </div>
       )}
 

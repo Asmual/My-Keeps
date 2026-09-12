@@ -499,7 +499,7 @@ export function CreateNoteBar({
               showVoiceRecorder ? (
                 <VoiceRecorder
                   initialAudioUrl={audioUrl}
-                  onSaveAudio={async (recordedData) => {
+                  onSaveAudio={async (recordedData, transcript) => {
                     if (!recordedData) {
                       setAudioUrl(null);
                       setShowVoiceRecorder(false);
@@ -510,9 +510,23 @@ export function CreateNoteBar({
                     try {
                       const uploadedUrl = await uploadMedia(recordedData, 'voice');
                       setAudioUrl(uploadedUrl);
-                      toast.success('Voice memo saved', { id: toastId });
+                      if (transcript && transcript.trim()) {
+                        setContent((prev) => {
+                          const trimmed = prev.trim();
+                          if (!trimmed) return transcript.trim();
+                          return `${trimmed}<p><br></p><p>${transcript.trim()}</p>`;
+                        });
+                      }
+                      toast.success('Voice memo and transcript saved', { id: toastId });
                     } catch {
                       setAudioUrl(recordedData);
+                      if (transcript && transcript.trim()) {
+                        setContent((prev) => {
+                          const trimmed = prev.trim();
+                          if (!trimmed) return transcript.trim();
+                          return `${trimmed}<p><br></p><p>${transcript.trim()}</p>`;
+                        });
+                      }
                     } finally {
                       setIsUploading(false);
                       setShowVoiceRecorder(false);

@@ -13,8 +13,12 @@ import {
   RemoveFormatting,
   ChevronDown,
   X,
+  Mic,
+  MicOff,
+  Sparkles,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useSpeechRecognition } from '@/hooks/useSpeechRecognition';
 
 interface RichTextEditorProps {
   value: string;
@@ -22,6 +26,8 @@ interface RichTextEditorProps {
   placeholder?: string;
   isFullscreen?: boolean;
   minHeightClass?: string;
+  onSummarize?: () => void;
+  showDictation?: boolean;
 }
 
 // Curated Vibrant Text Colors
@@ -55,6 +61,8 @@ export function RichTextEditor({
   placeholder = 'Note details...',
   isFullscreen = false,
   minHeightClass,
+  onSummarize,
+  showDictation = true,
 }: RichTextEditorProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<HTMLDivElement>(null);
@@ -65,6 +73,29 @@ export function RichTextEditor({
     top: number;
     left: number;
   }>({ visible: false, top: 0, left: 0 });
+
+  // Speech Dictation Hook
+  const {
+    isListening: isDictating,
+    language: dictationLang,
+    setLanguage: setDictationLang,
+    startListening: startDictation,
+    stopListening: stopDictation,
+    isSupported: isSpeechSupported,
+  } = useSpeechRecognition({
+    language: 'bn-BD',
+    continuous: true,
+    onResult: (spokenText) => {
+      if (editorRef.current) {
+        editorRef.current.focus();
+        document.execCommand('insertText', false, ' ' + spokenText);
+        if (editorRef.current) {
+          const html = editorRef.current.innerHTML;
+          onChange(html);
+        }
+      }
+    },
+  });
 
   // Popover menus
   const [isColorMenuOpen, setIsColorMenuOpen] = useState(false);
@@ -428,10 +459,77 @@ export function RichTextEditor({
           )}
         </div>
 
+        {/* Voice Dictation (ভয়েস দিয়ে লিখুন) */}
+        {showDictation && isSpeechSupported && (
+          <div className="flex items-center gap-1 ml-auto">
+            <button
+              type="button"
+              onClick={() => {
+                if (isDictating) {
+                  stopDictation();
+                } else {
+                  startDictation();
+                }
+              }}
+              className={cn(
+                'flex items-center gap-1 px-2 py-1 rounded-lg transition-all cursor-pointer text-xs font-medium',
+                isDictating
+                  ? 'bg-rose-500 text-white animate-pulse shadow-xs'
+                  : 'hover:bg-[#A7EBF2]/30 dark:hover:bg-[#023859] text-slate-600 dark:text-[#A7EBF2]'
+              )}
+              title={isDictating ? 'Stop Voice Dictation' : 'Start Voice Dictation (ভয়েস দিয়ে লিখুন)'}
+            >
+              {isDictating ? (
+                <>
+                  <MicOff className="w-3.5 h-3.5" />
+                  <span className="text-[10px] hidden sm:inline font-bold">Dictating...</span>
+                </>
+              ) : (
+                <>
+                  <Mic className="w-3.5 h-3.5 text-[#54ACBF]" />
+                  <span className="text-[10px] hidden sm:inline">ভয়েস টাইপিং</span>
+                </>
+              )}
+            </button>
+
+            {isDictating && (
+              <button
+                type="button"
+                onClick={() =>
+                  setDictationLang(dictationLang === 'bn-BD' ? 'en-US' : 'bn-BD')
+                }
+                className="text-[10px] px-1.5 py-0.5 rounded bg-black/10 dark:bg-white/10 font-mono hover:bg-black/20 text-[#011C40] dark:text-white"
+                title="Toggle language (বাংলা / English)"
+              >
+                {dictationLang === 'bn-BD' ? '🇧🇩 BN' : '🇺🇸 EN'}
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* AI Summarize Button on Top Toolbar */}
+        {onSummarize && (
+          <button
+            type="button"
+            onClick={onSummarize}
+            className={cn(
+              'flex items-center gap-1 px-2.5 py-1 rounded-lg bg-linear-to-r from-amber-500/15 to-rose-500/15 hover:from-amber-500/25 hover:to-rose-500/25 text-[#011C40] dark:text-[#A7EBF2] border border-amber-400/40 dark:border-amber-500/30 transition-all cursor-pointer font-medium shadow-xs',
+              (!showDictation || !isSpeechSupported) && 'ml-auto'
+            )}
+            title="AI Summarize Note (৩-৪টি বুলেট পয়েন্টে সামারি)"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-amber-500 fill-amber-500/30" />
+            <span className="text-[11px] font-semibold">✨ AI Summarize</span>
+          </button>
+        )}
+
         <button
           type="button"
           onClick={() => applyFormat('removeFormat')}
-          className="p-1.5 rounded-lg hover:bg-black/5 dark:hover:bg-white/10 text-slate-400 hover:text-rose-500 transition-colors cursor-pointer ml-auto"
+          className={cn(
+            'p-1.5 rounded-lg hover:bg-black/5 dark:hover:bg-white/10 text-slate-400 hover:text-rose-500 transition-colors cursor-pointer',
+            !onSummarize && (!showDictation || !isSpeechSupported) && 'ml-auto'
+          )}
           title="Clear Formatting"
         >
           <RemoveFormatting className="w-3.5 h-3.5" />
@@ -529,6 +627,17 @@ export function RichTextEditor({
               <Palette className="w-3.5 h-3.5" />
             </button>
           </div>
+
+          {onSummarize && (
+            <button
+              type="button"
+              onClick={onSummarize}
+              className="p-1.5 rounded-lg hover:bg-amber-100 dark:hover:bg-amber-950/60 text-amber-500 transition-colors cursor-pointer"
+              title="AI Summarize Note"
+            >
+              <Sparkles className="w-3.5 h-3.5 fill-current" />
+            </button>
+          )}
         </div>
       )}
 
