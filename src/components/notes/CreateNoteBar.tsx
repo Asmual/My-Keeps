@@ -24,6 +24,7 @@ import { GripVertical } from '@/components/ui/GripIcon';
 import { useNotes } from '@/hooks/useNotes';
 import { ColorPicker } from './ColorPicker';
 import { ReminderPicker } from './ReminderPicker';
+import { RichTextEditor } from './RichTextEditor';
 import { VoiceRecorder } from './VoiceRecorder';
 import { LockModal } from './LockModal';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
@@ -553,10 +554,9 @@ export function CreateNoteBar({
 
             {/* Content or Checklist */}
             {defaultNoteType !== 'checklist' ? (
-              <textarea
-                ref={textareaRef}
+              <RichTextEditor
                 value={content}
-                onChange={(e) => setContent(e.target.value)}
+                onChange={setContent}
                 placeholder={
                   defaultNoteType === 'image'
                     ? 'Image note details...'
@@ -564,8 +564,7 @@ export function CreateNoteBar({
                     ? 'Voice note details...'
                     : 'Take a note...'
                 }
-                rows={3}
-                className="w-full bg-transparent text-sm text-[#011C40] dark:text-[#F8FAFC] placeholder-slate-400 dark:placeholder-[#A7EBF2]/50 resize-none focus:outline-none leading-relaxed"
+                minHeightClass="min-h-[110px]"
               />
             ) : (
               <div className="space-y-2 pt-1">

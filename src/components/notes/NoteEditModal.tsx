@@ -30,6 +30,7 @@ import { useNotes } from '@/hooks/useNotes';
 import { NOTE_COLORS } from '@/lib/constants';
 import { ColorPicker } from './ColorPicker';
 import { ReminderPicker } from './ReminderPicker';
+import { RichTextEditor } from './RichTextEditor';
 import { VoiceRecorder } from './VoiceRecorder';
 import { LockModal } from './LockModal';
 import { UnlockModal } from './UnlockModal';
@@ -39,6 +40,7 @@ import { ConfirmModal } from '@/components/ui/ConfirmModal';
 import { cn, generateId } from '@/lib/utils';
 import { CheckItem, Note, NoteColorId } from '@/types/note';
 import { uploadMedia } from '@/lib/upload';
+import { extractPlainText } from '@/lib/sanitize';
 import toast from 'react-hot-toast';
 
 interface NoteEditModalContentProps {
@@ -554,17 +556,12 @@ function NoteEditModalContent({ note, onClose }: NoteEditModalContentProps) {
                 </button>
               </div>
             ) : null}
-            {/* Content text (Dynamic expanded size for large texts and fullscreen) */}
-            <textarea
+            {/* Content text (Rich Text Editor with Floating Bubble Bar & Headings/Colors) */}
+            <RichTextEditor
               value={content}
-              onChange={(e) => setContent(e.target.value)}
+              onChange={setContent}
               placeholder="Note details..."
-              className={cn(
-                'w-full min-w-0 bg-transparent text-[#011C40] dark:text-slate-100 placeholder-slate-400 dark:placeholder-[#A7EBF2]/50 resize-none focus:outline-none transition-all leading-relaxed',
-                isFullscreen
-                  ? 'min-h-[460px] sm:min-h-[520px] text-base'
-                  : 'min-h-[200px] sm:min-h-[260px] text-sm sm:text-base'
-              )}
+              isFullscreen={isFullscreen}
             />
 
             {/* Checklist */}
@@ -892,11 +889,18 @@ function NoteEditModalContent({ note, onClose }: NoteEditModalContentProps) {
             </div>
 
             <div className="flex items-center gap-3">
-              <div className="hidden sm:flex items-center gap-1.5 text-xs text-slate-400 dark:text-[#A7EBF2]/60 select-none">
-                <span>{content.trim() ? content.trim().split(/\s+/).length : 0} words</span>
-                <span>•</span>
-                <span>{content.length} chars</span>
-              </div>
+              {(() => {
+                const plainText = extractPlainText(content);
+                const words = plainText.trim() ? plainText.trim().split(/\s+/).length : 0;
+                const chars = plainText.length;
+                return (
+                  <div className="hidden sm:flex items-center gap-1.5 text-xs text-slate-400 dark:text-[#A7EBF2]/60 select-none">
+                    <span>{words} words</span>
+                    <span>•</span>
+                    <span>{chars} chars</span>
+                  </div>
+                );
+              })()}
               <Button
                 variant="primary"
                 size="sm"

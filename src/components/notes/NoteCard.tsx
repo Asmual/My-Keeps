@@ -29,6 +29,7 @@ import { ConfirmModal } from '@/components/ui/ConfirmModal';
 import { LockModal } from './LockModal';
 import { UnlockModal } from './UnlockModal';
 import { cn, formatDate } from '@/lib/utils';
+import { sanitizeHtml } from '@/lib/sanitize';
 import toast from 'react-hot-toast';
 
 interface NoteCardProps {
@@ -303,9 +304,16 @@ export function NoteCard({ note, isTrashView = false }: NoteCardProps) {
 
             {/* Content Body */}
             {note.content && (
-              <p className="text-sm text-slate-700 dark:text-slate-200 whitespace-pre-wrap break-words leading-relaxed line-clamp-8 mb-3">
-                {note.content}
-              </p>
+              <div
+                className={cn(
+                  "text-sm text-slate-700 dark:text-slate-200 break-words leading-relaxed line-clamp-8 mb-3",
+                  "[&_h1]:text-base [&_h1]:font-bold [&_h1]:my-0.5",
+                  "[&_h2]:text-sm [&_h2]:font-bold [&_h2]:my-0.5",
+                  "[&_blockquote]:border-l-2 [&_blockquote]:border-[#54ACBF] [&_blockquote]:pl-2 [&_blockquote]:italic [&_blockquote]:my-0.5",
+                  "[&_mark]:bg-amber-200/90 dark:[&_mark]:bg-amber-300 [&_mark]:text-slate-900 [&_mark]:px-0.5 [&_mark]:rounded"
+                )}
+                dangerouslySetInnerHTML={{ __html: sanitizeHtml(note.content) }}
+              />
             )}
 
             {/* Checklist preview */}
