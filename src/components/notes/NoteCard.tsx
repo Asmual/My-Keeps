@@ -17,11 +17,13 @@ import {
   ChevronRight,
   Lock,
   LockKeyhole,
+  Bell,
 } from 'lucide-react';
 import { Note } from '@/types/note';
 import { NOTE_COLORS } from '@/lib/constants';
 import { useNotes } from '@/hooks/useNotes';
 import { ColorPicker } from './ColorPicker';
+import { ReminderPicker } from './ReminderPicker';
 import { Badge } from '@/components/ui/Badge';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
 import { LockModal } from './LockModal';
@@ -44,6 +46,7 @@ export function NoteCard({ note, isTrashView = false }: NoteCardProps) {
     restoreNote,
     deletePermanently,
     changeColor,
+    setNoteReminder,
     removeLabel,
     addLabel,
     setActiveEditNote,
@@ -396,6 +399,23 @@ export function NoteCard({ note, isTrashView = false }: NoteCardProps) {
           </>
         )}
 
+        {/* Active Reminder Badge */}
+        {note.reminder && (
+          <div className="flex items-center gap-1.5 mb-2.5">
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30">
+              <Bell className="w-3 h-3 fill-current" />
+              <span>
+                {new Date(note.reminder).toLocaleString(undefined, {
+                  month: 'short',
+                  day: 'numeric',
+                  hour: 'numeric',
+                  minute: '2-digit',
+                })}
+              </span>
+            </span>
+          </div>
+        )}
+
         {/* Labels / Tags (Soft Ice Blue with dark text) */}
         {note.labels && note.labels.length > 0 && (
           <div className="flex flex-wrap gap-1.5 mb-2.5">
@@ -466,6 +486,12 @@ export function NoteCard({ note, isTrashView = false }: NoteCardProps) {
             <ColorPicker
               currentColor={note.color}
               onSelectColor={(col) => changeColor(note.id, col)}
+            />
+
+            <ReminderPicker
+              currentReminder={note.reminder}
+              onSelectReminder={(iso) => setNoteReminder(note.id, iso)}
+              iconClassName="w-3.5 h-3.5"
             />
 
             <button

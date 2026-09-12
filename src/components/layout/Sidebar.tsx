@@ -15,6 +15,7 @@ import {
   Star,
   Image as ImageIcon,
   Mic,
+  Bell,
   X,
   Search,
 } from 'lucide-react';
@@ -85,6 +86,13 @@ export function Sidebar() {
       icon: Star,
       count: counts.important,
       active: pathname === '/important',
+    },
+    {
+      label: 'Reminders',
+      href: '/reminders',
+      icon: Bell,
+      count: counts.reminders,
+      active: pathname === '/reminders',
     },
     {
       label: 'Archive',

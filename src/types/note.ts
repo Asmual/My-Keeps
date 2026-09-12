@@ -44,6 +44,7 @@ export interface Note {
   isLocked?: boolean;
   isUnlocked?: boolean;
   unlockedUntil?: string | null;
+  reminder?: string | null;
   createdAt: string;
   updatedAt: string;
 }

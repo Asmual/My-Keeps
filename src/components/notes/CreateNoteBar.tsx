@@ -18,10 +18,12 @@ import {
   ChevronRight,
   Check,
   Lock,
+  Bell,
 } from 'lucide-react';
 import { GripVertical } from '@/components/ui/GripIcon';
 import { useNotes } from '@/hooks/useNotes';
 import { ColorPicker } from './ColorPicker';
+import { ReminderPicker } from './ReminderPicker';
 import { VoiceRecorder } from './VoiceRecorder';
 import { LockModal } from './LockModal';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
@@ -58,6 +60,7 @@ export function CreateNoteBar({
   const [checklist, setChecklist] = useState<CheckItem[]>([]);
   const [newCheckItem, setNewCheckItem] = useState('');
   const [isImportant, setIsImportant] = useState(defaultImportant);
+  const [reminder, setReminder] = useState<string | null>(null);
   const [images, setImages] = useState<string[]>([]);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [showVoiceRecorder, setShowVoiceRecorder] = useState(false);
@@ -175,6 +178,7 @@ export function CreateNoteBar({
       audioUrl: finalAudioUrl,
       isLocked,
       password: isLocked && lockPassword ? lockPassword : null,
+      reminder: reminder || null,
     };
 
     // Reset state immediately to prevent duplicate creation
@@ -183,6 +187,7 @@ export function CreateNoteBar({
     setIsPinned(false);
     setIsLocked(false);
     setLockPassword('');
+    setReminder(null);
     setIsImportant(defaultImportant);
     setColor('default');
     setLabels([]);
@@ -207,6 +212,7 @@ export function CreateNoteBar({
     color,
     isPinned,
     isImportant,
+    reminder,
     labels,
     isChecklistMode,
     defaultNoteType,
@@ -749,10 +755,42 @@ export function CreateNoteBar({
               </div>
             )}
 
+            {/* Active Reminder chip in CreateNoteBar */}
+            {reminder && (
+              <div className="flex items-center gap-2 pt-1">
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30">
+                  <Bell className="w-3.5 h-3.5 fill-current" />
+                  <span>
+                    Reminder:{' '}
+                    {new Date(reminder).toLocaleString(undefined, {
+                      month: 'short',
+                      day: 'numeric',
+                      hour: 'numeric',
+                      minute: '2-digit',
+                    })}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setReminder(null)}
+                    className="ml-1 p-0.5 hover:text-rose-600 rounded-full cursor-pointer"
+                    title="Remove reminder"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </span>
+              </div>
+            )}
+
             {/* Action buttons & Close (Luna Primary Dark Blue) */}
             <div className="flex items-center justify-between pt-2.5 border-t border-black/5 dark:border-white/10">
               <div className="flex items-center gap-1">
                 <ColorPicker currentColor={color} onSelectColor={setColor} />
+
+                <ReminderPicker
+                  currentReminder={reminder}
+                  onSelectReminder={(iso) => setReminder(iso)}
+                  iconClassName="w-4 h-4"
+                />
 
                 <button
                   type="button"

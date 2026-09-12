@@ -10,6 +10,7 @@ import {
   Star,
   Image as ImageIcon,
   Mic,
+  Bell,
   LucideIcon,
   Sparkles,
   LogIn,
@@ -27,7 +28,8 @@ type EmptyStateType =
   | 'label'
   | 'important'
   | 'imageNotes'
-  | 'voiceNotes';
+  | 'voiceNotes'
+  | 'reminders';
 
 interface EmptyStateProps {
   type: EmptyStateType;
@@ -86,6 +88,12 @@ export function EmptyState({ type, customMessage }: EmptyStateProps) {
       title: 'No voice memos yet',
       description: 'Record quick audio thoughts with the microphone button.',
       colorClass: 'text-[#54ACBF] bg-[#A7EBF2]/20 dark:bg-[#023859] border border-[#26658C]',
+    },
+    reminders: {
+      icon: Bell,
+      title: 'No notes with reminders',
+      description: 'Notes with upcoming date and time reminders will appear here.',
+      colorClass: 'text-amber-500 bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-900',
     },
     search: {
       icon: SearchX,

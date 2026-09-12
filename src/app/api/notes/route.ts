@@ -42,6 +42,10 @@ export async function GET(request: NextRequest) {
       query.isArchived = false;
       query.isTrashed = false;
       query.$or = [{ noteType: 'voice' }, { audioUrl: { $ne: null } }];
+    } else if (filter === 'reminders') {
+      query.isArchived = false;
+      query.isTrashed = false;
+      query.reminder = { $ne: null };
     } else {
       // Default active notes
       query.isArchived = false;
@@ -75,6 +79,7 @@ export async function GET(request: NextRequest) {
         isLocked: hasPassword,
         isUnlocked: isTemporarilyUnlocked,
         unlockedUntil: rest.unlockedUntil ? new Date(rest.unlockedUntil as string | Date).toISOString() : null,
+        reminder: rest.reminder ? new Date(rest.reminder as string | Date).toISOString() : null,
       };
     });
 
@@ -120,6 +125,7 @@ export async function POST(request: NextRequest) {
       noteType: body.noteType || 'text',
       images: body.images || [],
       audioUrl: body.audioUrl || null,
+      reminder: body.reminder ? new Date(body.reminder) : null,
       isLocked,
       password: passwordHash,
       userId: body.userId.trim(),

@@ -20,11 +20,16 @@ import {
   Check,
   Lock,
   LockKeyhole,
+  Maximize2,
+  Minimize2,
+  Bell,
+  Clock,
 } from 'lucide-react';
 import { GripVertical } from '@/components/ui/GripIcon';
 import { useNotes } from '@/hooks/useNotes';
 import { NOTE_COLORS } from '@/lib/constants';
 import { ColorPicker } from './ColorPicker';
+import { ReminderPicker } from './ReminderPicker';
 import { VoiceRecorder } from './VoiceRecorder';
 import { LockModal } from './LockModal';
 import { UnlockModal } from './UnlockModal';
@@ -55,6 +60,9 @@ function NoteEditModalContent({ note, onClose }: NoteEditModalContentProps) {
   const [isLockModalOpen, setIsLockModalOpen] = useState(false);
   const [isRemoveLockModalOpen, setIsRemoveLockModalOpen] = useState(false);
 
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [reminder, setReminder] = useState<string | null>(note.reminder || null);
+
   const [title, setTitle] = useState(note.title || '');
   const [content, setContent] = useState(note.content || '');
   const [color, setColor] = useState<NoteColorId>(note.color || 'default');
@@ -78,6 +86,18 @@ function NoteEditModalContent({ note, onClose }: NoteEditModalContentProps) {
 
   const imageInputRef = useRef<HTMLInputElement>(null);
   const audioPreviewRef = useRef<HTMLAudioElement | null>(null);
+
+  // Keyboard shortcut: Escape exits fullscreen first
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isFullscreen) {
+        e.stopPropagation();
+        setIsFullscreen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isFullscreen]);
 
   // Clean up audio on unmount
   useEffect(() => {
@@ -164,6 +184,7 @@ function NoteEditModalContent({ note, onClose }: NoteEditModalContentProps) {
       noteType: finalNoteType,
       images: finalImages,
       audioUrl: finalAudioUrl,
+      reminder: reminder || null,
     });
     onClose();
   }, [
@@ -178,6 +199,7 @@ function NoteEditModalContent({ note, onClose }: NoteEditModalContentProps) {
     checklist,
     images,
     audioUrl,
+    reminder,
     updateNote,
     onClose,
   ]);
@@ -224,6 +246,7 @@ function NoteEditModalContent({ note, onClose }: NoteEditModalContentProps) {
       noteType: finalNoteType,
       images: finalImages,
       audioUrl: finalAudioUrl,
+      reminder: reminder || null,
     });
 
     await lockNote(note.id);
@@ -240,6 +263,7 @@ function NoteEditModalContent({ note, onClose }: NoteEditModalContentProps) {
     checklist,
     images,
     audioUrl,
+    reminder,
     updateNote,
     lockNote,
     onClose,
@@ -342,14 +366,17 @@ function NoteEditModalContent({ note, onClose }: NoteEditModalContentProps) {
         <div
           onClick={(e) => e.stopPropagation()}
           className={cn(
-            'w-full max-w-xl max-h-[85vh] sm:max-h-[90vh] flex flex-col rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-2xl border transition-all duration-200 animate-in zoom-in-95 overflow-hidden',
+            'w-full flex flex-col rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-2xl border transition-all duration-200 animate-in zoom-in-95 overflow-hidden',
+            isFullscreen
+              ? 'w-[96vw] max-w-6xl h-[92vh] sm:h-[94vh]'
+              : 'max-w-3xl sm:max-w-4xl max-h-[85vh] sm:max-h-[90vh]',
             colorConfig.bgLight,
             colorConfig.bgDark,
             colorConfig.borderLight,
             colorConfig.borderDark
           )}
         >
-          {/* Header: Title & Pin / Star (Fixed at top) */}
+          {/* Header: Title & Pin / Star / Fullscreen (Fixed at top) */}
           <div className="flex items-center justify-between gap-3 mb-3 shrink-0">
             <input
               type="text"
@@ -365,6 +392,25 @@ function NoteEditModalContent({ note, onClose }: NoteEditModalContentProps) {
                   <span>Unlocked (3h)</span>
                 </span>
               )}
+
+              <button
+                type="button"
+                onClick={() => setIsFullscreen((prev) => !prev)}
+                className={cn(
+                  'p-2 rounded-full transition-colors cursor-pointer shrink-0',
+                  isFullscreen
+                    ? 'text-[#023859] dark:text-[#A7EBF2] bg-[#A7EBF2]/30 dark:bg-[#023859]'
+                    : 'text-slate-400 hover:text-[#011C40] dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/10'
+                )}
+                title={isFullscreen ? 'Exit full screen (Esc)' : 'Expand to full screen'}
+                aria-label={isFullscreen ? 'Exit full screen' : 'Full screen'}
+              >
+                {isFullscreen ? (
+                  <Minimize2 className="w-5 h-5" />
+                ) : (
+                  <Maximize2 className="w-5 h-5" />
+                )}
+              </button>
 
               <button
                 type="button"
@@ -395,6 +441,32 @@ function NoteEditModalContent({ note, onClose }: NoteEditModalContentProps) {
               </button>
             </div>
           </div>
+
+          {/* Active Reminder Chip */}
+          {reminder && (
+            <div className="flex items-center gap-2 mb-3 shrink-0">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30">
+                <Bell className="w-3.5 h-3.5 fill-current" />
+                <span>
+                  Reminder:{' '}
+                  {new Date(reminder).toLocaleString(undefined, {
+                    month: 'short',
+                    day: 'numeric',
+                    hour: 'numeric',
+                    minute: '2-digit',
+                  })}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setReminder(null)}
+                  className="ml-1 p-0.5 hover:text-rose-600 rounded-full cursor-pointer"
+                  title="Remove reminder"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </span>
+            </div>
+          )}
 
           {/* Scrollable Middle Content (Images, Voice, Text, Checklist, Labels) */}
           <div className="flex-1 overflow-y-auto pr-1 sm:pr-2 space-y-3 min-h-0">
@@ -482,13 +554,17 @@ function NoteEditModalContent({ note, onClose }: NoteEditModalContentProps) {
                 </button>
               </div>
             ) : null}
-            {/* Content text */}
+            {/* Content text (Dynamic expanded size for large texts and fullscreen) */}
             <textarea
               value={content}
               onChange={(e) => setContent(e.target.value)}
               placeholder="Note details..."
-              rows={4}
-              className="w-full min-w-0 bg-transparent text-sm text-[#011C40] dark:text-slate-100 placeholder-slate-400 dark:placeholder-[#A7EBF2]/50 resize-none focus:outline-none leading-relaxed"
+              className={cn(
+                'w-full min-w-0 bg-transparent text-[#011C40] dark:text-slate-100 placeholder-slate-400 dark:placeholder-[#A7EBF2]/50 resize-none focus:outline-none transition-all leading-relaxed',
+                isFullscreen
+                  ? 'min-h-[460px] sm:min-h-[520px] text-base'
+                  : 'min-h-[200px] sm:min-h-[260px] text-sm sm:text-base'
+              )}
             />
 
             {/* Checklist */}
@@ -688,6 +764,12 @@ function NoteEditModalContent({ note, onClose }: NoteEditModalContentProps) {
             <div className="flex items-center gap-1.5">
               <ColorPicker currentColor={color} onSelectColor={setColor} />
 
+              <ReminderPicker
+                currentReminder={reminder}
+                onSelectReminder={(iso) => setReminder(iso)}
+                iconClassName="w-4 h-4"
+              />
+
               <button
                 type="button"
                 onClick={() => setShowLabelInput((prev) => !prev)}
@@ -809,16 +891,23 @@ function NoteEditModalContent({ note, onClose }: NoteEditModalContentProps) {
               </button>
             </div>
 
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={handleSaveAndClose}
-              disabled={isUploading}
-              className="px-6 font-semibold flex items-center gap-1.5"
-            >
-              {isUploading && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-              {isUploading ? 'Saving...' : 'Done'}
-            </Button>
+            <div className="flex items-center gap-3">
+              <div className="hidden sm:flex items-center gap-1.5 text-xs text-slate-400 dark:text-[#A7EBF2]/60 select-none">
+                <span>{content.trim() ? content.trim().split(/\s+/).length : 0} words</span>
+                <span>•</span>
+                <span>{content.length} chars</span>
+              </div>
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={handleSaveAndClose}
+                disabled={isUploading}
+                className="px-6 font-semibold flex items-center gap-1.5"
+              >
+                {isUploading && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                {isUploading ? 'Saving...' : 'Done'}
+              </Button>
+            </div>
           </div>
         </div>
       </div>

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState, useMemo, useCallback } from 'react';
+import React, { createContext, useContext, useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Note, NoteColorId, ViewMode } from '@/types/note';
 import { useSession } from '@/lib/auth-client';
@@ -33,6 +33,7 @@ interface NotesContextType {
     important: number;
     imageNotes: number;
     voiceNotes: number;
+    reminders: number;
   };
   selectedNoteIds: string[];
   toggleSelectNote: (id: string) => void;
@@ -46,6 +47,7 @@ interface NotesContextType {
   closeAuthModal: () => void;
   createNote: (noteData: Partial<Note>) => Promise<Note | null>;
   updateNote: (id: string, updates: Partial<Note>) => Promise<void>;
+  setNoteReminder: (id: string, reminder: string | null) => Promise<void>;
   togglePin: (id: string) => Promise<void>;
   toggleImportant: (id: string) => Promise<void>;
   archiveNote: (id: string) => Promise<void>;
@@ -262,6 +264,75 @@ export function NotesProvider({ children }: { children: React.ReactNode }) {
     return () => clearInterval(intervalId);
   }, [activeEditNote]);
 
+  // Web Audio chime player for scheduled reminders
+  const playReminderChime = useCallback(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const AudioCtx =
+        window.AudioContext ||
+        (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      if (!AudioCtx) return;
+      const audioCtx = new AudioCtx();
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(587.33, audioCtx.currentTime); // D5
+      osc.frequency.setValueAtTime(880, audioCtx.currentTime + 0.15); // A5
+      gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.6);
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.6);
+    } catch {
+      // Audio autoplay policy or not supported
+    }
+  }, []);
+
+  // Background reminder notifications
+  const notifiedRemindersRef = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    const checkReminders = () => {
+      const now = Date.now();
+      notes.forEach((note) => {
+        if (!note.isArchived && !note.isTrashed && note.reminder) {
+          const reminderTime = new Date(note.reminder).getTime();
+          // Trigger if reached within 24 hours
+          if (reminderTime <= now && now - reminderTime < 1000 * 60 * 60 * 24) {
+            const key = `${note.id}-${note.reminder}`;
+            if (!notifiedRemindersRef.current.has(key)) {
+              notifiedRemindersRef.current.add(key);
+              playReminderChime();
+              toast(`🔔 Reminder: ${note.title || 'Untitled note'}`, {
+                duration: 7000,
+                icon: '⏰',
+              });
+
+              if (
+                typeof window !== 'undefined' &&
+                'Notification' in window &&
+                Notification.permission === 'granted'
+              ) {
+                try {
+                  new Notification(note.title || 'Note Reminder', {
+                    body: note.content ? note.content.slice(0, 100) : 'Scheduled reminder time reached',
+                    icon: '/images/MK-logo.png',
+                  });
+                } catch {
+                  // Notification ignored
+                }
+              }
+            }
+          }
+        }
+      });
+    };
+
+    const intervalId = setInterval(checkReminders, 15000); // Check every 15s
+    return () => clearInterval(intervalId);
+  }, [notes, playReminderChime]);
+
   // Extract all unique labels dynamically from active notes
   const allLabels = useMemo(() => {
     const labelSet = new Set<string>();
@@ -297,6 +368,9 @@ export function NotesProvider({ children }: { children: React.ReactNode }) {
       ).length,
       voiceNotes: notes.filter(
         (n) => !n.isArchived && !n.isTrashed && (n.noteType === 'voice' || Boolean(n.audioUrl))
+      ).length,
+      reminders: notes.filter(
+        (n) => !n.isArchived && !n.isTrashed && Boolean(n.reminder)
       ).length,
     };
   }, [notes]);
@@ -390,6 +464,17 @@ export function NotesProvider({ children }: { children: React.ReactNode }) {
       }
     } catch (err) {
       console.error('Error updating note in MongoDB:', err);
+    }
+  };
+
+  // SET / REMOVE REMINDER
+  const setNoteReminder = async (id: string, reminder: string | null): Promise<void> => {
+    if (!requireAuth('set reminder')) return;
+    await updateNote(id, { reminder });
+    if (reminder) {
+      toast.success('Reminder scheduled');
+    } else {
+      toast.success('Reminder removed');
     }
   };
 
@@ -1066,6 +1151,7 @@ export function NotesProvider({ children }: { children: React.ReactNode }) {
         closeAuthModal,
         createNote,
         updateNote,
+        setNoteReminder,
         togglePin,
         toggleImportant,
         archiveNote,
