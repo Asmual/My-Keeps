@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/db/mongoose';
 import { NoteModel } from '@/models/Note';
-import { hashNotePassword } from '@/lib/security';
+import { hashNotePassword, verifyNotePassword } from '@/lib/security';
 import mongoose from 'mongoose';
 
 export async function GET(
@@ -91,6 +91,23 @@ export async function PATCH(
       ? { ...baseQuery, userId: userId.trim() }
       : baseQuery;
 
+    // If attempting to move note to trash, verify password if note is locked
+    if (body.isTrashed === true) {
+      const existing = await NoteModel.findOne(query);
+      if (!existing) {
+        return NextResponse.json({ success: false, error: 'Note not found' }, { status: 404 });
+      }
+      if (existing.isLocked && existing.password) {
+        const providedPassword = body.password;
+        if (!providedPassword || !verifyNotePassword(String(providedPassword).trim(), existing.password)) {
+          return NextResponse.json(
+            { success: false, error: 'Password required to delete a locked note' },
+            { status: 403 }
+          );
+        }
+      }
+    }
+
     const updatedNote = await NoteModel.findOneAndUpdate(query, updatePayload, {
       returnDocument: 'after',
       runValidators: true,
@@ -154,10 +171,24 @@ export async function DELETE(
       ? { ...baseQuery, userId: userId.trim() }
       : baseQuery;
 
-    const deleted = await NoteModel.findOneAndDelete(query);
-    if (!deleted) {
+    const note = await NoteModel.findOne(query);
+    if (!note) {
       return NextResponse.json({ success: false, error: 'Note not found' }, { status: 404 });
     }
+
+    // Require password if note is locked
+    if (note.isLocked && note.password) {
+      const body = await request.json().catch(() => ({}));
+      const providedPassword = body.password || searchParams.get('password');
+      if (!providedPassword || !verifyNotePassword(String(providedPassword).trim(), note.password)) {
+        return NextResponse.json(
+          { success: false, error: 'Password required to delete a locked note' },
+          { status: 403 }
+        );
+      }
+    }
+
+    await NoteModel.deleteOne(query);
 
     return NextResponse.json({
       success: true,

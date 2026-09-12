@@ -58,6 +58,7 @@ export function NoteCard({ note, isTrashView = false }: NoteCardProps) {
   const [showTagInput, setShowTagInput] = useState(false);
   const [tagInputValue, setTagInputValue] = useState('');
   const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = useState(false);
+  const [isDeleteLockModalOpen, setIsDeleteLockModalOpen] = useState(false);
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
   const [showCompleted, setShowCompleted] = useState(false);
   const [isLockModalOpen, setIsLockModalOpen] = useState(false);
@@ -542,7 +543,13 @@ export function NoteCard({ note, isTrashView = false }: NoteCardProps) {
 
             <button
               type="button"
-              onClick={() => setIsConfirmDeleteOpen(true)}
+              onClick={() => {
+                if (note.isLocked) {
+                  setIsDeleteLockModalOpen(true);
+                } else {
+                  setIsConfirmDeleteOpen(true);
+                }
+              }}
               title="Delete note"
               className="p-1.5 rounded-full text-slate-600 dark:text-[#A7EBF2]/80 hover:bg-rose-100 dark:hover:bg-rose-950/60 hover:text-rose-600 transition-colors cursor-pointer"
             >
@@ -565,7 +572,13 @@ export function NoteCard({ note, isTrashView = false }: NoteCardProps) {
             </button>
             <button
               type="button"
-              onClick={() => setIsConfirmDeleteOpen(true)}
+              onClick={() => {
+                if (note.isLocked) {
+                  setIsDeleteLockModalOpen(true);
+                } else {
+                  setIsConfirmDeleteOpen(true);
+                }
+              }}
               title="Delete permanently"
               className="p-1.5 rounded-full text-rose-500 hover:bg-rose-100 dark:hover:bg-rose-950/60 transition-colors cursor-pointer"
             >
@@ -589,6 +602,31 @@ export function NoteCard({ note, isTrashView = false }: NoteCardProps) {
         confirmText="Delete"
         cancelText="Cancel"
         variant="danger"
+      />
+
+      {/* Password Confirmation Modal for Deleting Locked Note */}
+      <UnlockModal
+        isOpen={isDeleteLockModalOpen}
+        onClose={() => setIsDeleteLockModalOpen(false)}
+        noteTitle={note.title}
+        title={isTrashView ? 'Delete Locked Note Permanently' : 'Delete Locked Note'}
+        description={
+          isTrashView
+            ? 'This note is password protected. Enter password to delete permanently.'
+            : 'This note is password protected. Enter password to move to trash.'
+        }
+        confirmButtonText={isTrashView ? 'Delete Permanently' : 'Move to Trash'}
+        variant="danger"
+        iconVariant="danger"
+        onUnlock={async (password) => {
+          if (isTrashView) {
+            const success = await deletePermanently(note.id, password);
+            return success;
+          } else {
+            const success = await trashNote(note.id, password);
+            return success;
+          }
+        }}
       />
 
       <LockModal

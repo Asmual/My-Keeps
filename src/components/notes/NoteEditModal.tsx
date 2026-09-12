@@ -73,6 +73,7 @@ function NoteEditModalContent({ note, onClose }: NoteEditModalContentProps) {
   const [newLabelInput, setNewLabelInput] = useState('');
   const [showLabelInput, setShowLabelInput] = useState(false);
   const [isConfirmTrashOpen, setIsConfirmTrashOpen] = useState(false);
+  const [isDeleteLockModalOpen, setIsDeleteLockModalOpen] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
 
   const imageInputRef = useRef<HTMLInputElement>(null);
@@ -794,8 +795,14 @@ function NoteEditModalContent({ note, onClose }: NoteEditModalContentProps) {
 
               <button
                 type="button"
-                onClick={() => setIsConfirmTrashOpen(true)}
-                title="Delete note permanently"
+                onClick={() => {
+                  if (note.isLocked) {
+                    setIsDeleteLockModalOpen(true);
+                  } else {
+                    setIsConfirmTrashOpen(true);
+                  }
+                }}
+                title="Delete note"
                 className="p-1.5 rounded-full text-slate-600 dark:text-[#A7EBF2]/80 hover:bg-rose-100 dark:hover:bg-rose-950/60 hover:text-rose-600 transition-colors cursor-pointer"
               >
                 <Trash2 className="w-4 h-4" />
@@ -832,6 +839,30 @@ function NoteEditModalContent({ note, onClose }: NoteEditModalContentProps) {
         confirmText="Delete"
         cancelText="Cancel"
         variant="danger"
+      />
+
+      {/* Password Confirmation Modal for Deleting Locked Note */}
+      <UnlockModal
+        isOpen={isDeleteLockModalOpen}
+        onClose={() => setIsDeleteLockModalOpen(false)}
+        noteTitle={title || note.title}
+        title="Delete Locked Note"
+        description="This note is password protected. Enter password to delete."
+        confirmButtonText="Delete Note"
+        variant="danger"
+        iconVariant="danger"
+        onUnlock={async (password) => {
+          if (audioPreviewRef.current) {
+            audioPreviewRef.current.pause();
+            audioPreviewRef.current = null;
+          }
+          const success = await trashNote(note.id, password);
+          if (success) {
+            onClose();
+            return true;
+          }
+          return false;
+        }}
       />
 
       {/* Delete voice memo confirmation */}

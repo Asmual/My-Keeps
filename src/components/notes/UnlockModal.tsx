@@ -11,6 +11,11 @@ interface UnlockModalProps {
   onClose: () => void;
   onUnlock: (password: string) => Promise<boolean>;
   noteTitle?: string;
+  title?: string;
+  description?: string;
+  confirmButtonText?: string;
+  variant?: 'primary' | 'danger';
+  iconVariant?: 'amber' | 'danger';
 }
 
 const emptySubscribe = () => () => {};
@@ -20,6 +25,11 @@ export function UnlockModal({
   onClose,
   onUnlock,
   noteTitle,
+  title = 'Locked Note',
+  description,
+  confirmButtonText = 'Unlock & View',
+  variant = 'primary',
+  iconVariant = 'amber',
 }: UnlockModalProps) {
   const isMounted = useSyncExternalStore(
     emptySubscribe,
@@ -76,13 +86,19 @@ export function UnlockModal({
         {/* Header */}
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-2xl bg-amber-500/20 text-amber-500 dark:text-amber-400 shrink-0">
+            <div
+              className={`p-2.5 rounded-2xl shrink-0 ${
+                iconVariant === 'danger'
+                  ? 'bg-rose-500/20 text-rose-500 dark:text-rose-400'
+                  : 'bg-amber-500/20 text-amber-500 dark:text-amber-400'
+              }`}
+            >
               <LockKeyhole className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-base font-semibold">Locked Note</h3>
+              <h3 className="text-base font-semibold">{title}</h3>
               <p className="text-xs text-slate-500 dark:text-[#A7EBF2]/70 mt-0.5 truncate max-w-[190px]">
-                {noteTitle || 'Enter password to unlock'}
+                {description || noteTitle || 'Enter password to unlock'}
               </p>
             </div>
           </div>
@@ -142,7 +158,7 @@ export function UnlockModal({
             </Button>
             <Button
               type="submit"
-              variant="primary"
+              variant={variant}
               size="sm"
               disabled={isSubmitting}
               className="flex items-center gap-1.5 px-4 font-semibold"
@@ -155,7 +171,7 @@ export function UnlockModal({
               ) : (
                 <>
                   <LockKeyhole className="w-3.5 h-3.5" />
-                  <span>Unlock & View</span>
+                  <span>{confirmButtonText}</span>
                 </>
               )}
             </Button>

@@ -165,12 +165,16 @@ export async function DELETE(request: NextRequest) {
     await connectToDatabase();
 
     if (action === 'empty-trash') {
-      const query: Record<string, unknown> = { isTrashed: true, userId: userId.trim() };
+      const query: Record<string, unknown> = {
+        isTrashed: true,
+        userId: userId.trim(),
+        isLocked: { $ne: true },
+      };
 
       const res = await NoteModel.deleteMany(query);
       return NextResponse.json({
         success: true,
-        message: 'Trash emptied successfully',
+        message: 'Trash emptied successfully (locked notes preserved)',
         deletedCount: res.deletedCount,
       });
     }
@@ -197,6 +201,7 @@ export async function DELETE(request: NextRequest) {
           { id: { $in: ids } },
         ],
         userId: userId.trim(),
+        isLocked: { $ne: true }, // Protect locked notes from batch delete
       };
 
       const res = await NoteModel.deleteMany(query);

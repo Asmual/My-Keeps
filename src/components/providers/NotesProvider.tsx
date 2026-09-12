@@ -50,9 +50,9 @@ interface NotesContextType {
   toggleImportant: (id: string) => Promise<void>;
   archiveNote: (id: string) => Promise<void>;
   unarchiveNote: (id: string) => Promise<void>;
-  trashNote: (id: string) => Promise<void>;
+  trashNote: (id: string, password?: string) => Promise<boolean>;
   restoreNote: (id: string) => Promise<void>;
-  deletePermanently: (id: string) => Promise<void>;
+  deletePermanently: (id: string, password?: string) => Promise<boolean>;
   emptyTrash: () => Promise<void>;
   batchTrash: () => Promise<void>;
   batchArchive: () => Promise<void>;
@@ -462,33 +462,74 @@ export function NotesProvider({ children }: { children: React.ReactNode }) {
   };
 
   // TRASH
-  const trashNote = async (id: string): Promise<void> => {
-    if (!requireAuth('delete notes')) return;
+  const trashNote = async (id: string, password?: string): Promise<boolean> => {
+    if (!requireAuth('delete notes')) return false;
 
-    if (activeEditNote?.id === id) setActiveEditNoteState(null);
-    await updateNote(id, { isTrashed: true, isPinned: false });
+    const targetNote = notes.find((n) => n.id === id);
+    if (!targetNote) return false;
 
-    toast(
-      (t) => (
-        <div className="flex items-center justify-between gap-3 text-xs sm:text-sm font-medium">
-          <span>Successfully Deleted</span>
-          <button
-            type="button"
-            onClick={() => {
-              restoreNote(id);
-              toast.dismiss(t.id);
-            }}
-            className="px-2.5 py-1 text-xs font-semibold rounded-lg bg-[#54ACBF] text-[#011C40] hover:bg-[#A7EBF2] transition-colors cursor-pointer shadow-xs shrink-0"
-          >
-            Undo
-          </button>
-        </div>
-      ),
-      {
-        duration: 4000,
-        icon: '🗑️',
+    // If note is locked and no password provided, abort
+    if (targetNote.isLocked && !password) {
+      toast.error('Password required to delete a locked note');
+      return false;
+    }
+
+    try {
+      const params = new URLSearchParams();
+      if (userId) params.set('userId', userId);
+      const url = params.toString() ? `/api/notes/${id}?${params.toString()}` : `/api/notes/${id}`;
+
+      const res = await fetch(url, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          isTrashed: true,
+          isPinned: false,
+          userId,
+          password: password ? password.trim() : undefined,
+        }),
+      });
+
+      const json = await res.json();
+      if (res.ok && json.success) {
+        if (activeEditNote?.id === id) setActiveEditNoteState(null);
+        setNotes((prev) =>
+          prev.map((n) =>
+            n.id === id ? { ...n, isTrashed: true, isPinned: false } : n
+          )
+        );
+
+        toast(
+          (t) => (
+            <div className="flex items-center justify-between gap-3 text-xs sm:text-sm font-medium">
+              <span>Successfully Deleted</span>
+              <button
+                type="button"
+                onClick={() => {
+                  restoreNote(id);
+                  toast.dismiss(t.id);
+                }}
+                className="px-2.5 py-1 text-xs font-semibold rounded-lg bg-[#54ACBF] text-[#011C40] hover:bg-[#A7EBF2] transition-colors cursor-pointer shadow-xs shrink-0"
+              >
+                Undo
+              </button>
+            </div>
+          ),
+          {
+            duration: 4000,
+            icon: '🗑️',
+          }
+        );
+        return true;
+      } else {
+        toast.error(json.error || json.message || 'Incorrect password. Note not deleted.');
+        return false;
       }
-    );
+    } catch (err) {
+      console.error('Error trashing note:', err);
+      toast.error('Failed to delete note');
+      return false;
+    }
   };
 
   // RESTORE
@@ -500,21 +541,41 @@ export function NotesProvider({ children }: { children: React.ReactNode }) {
   };
 
   // DELETE PERMANENTLY from MongoDB
-  const deletePermanently = async (id: string): Promise<void> => {
-    if (!requireAuth('permanently delete notes')) return;
+  const deletePermanently = async (id: string, password?: string): Promise<boolean> => {
+    if (!requireAuth('permanently delete notes')) return false;
 
-    // Optimistic removal
-    setNotes((prev) => prev.filter((n) => n.id !== id));
-    toast.error('Note deleted permanently');
-    if (activeEditNote?.id === id) setActiveEditNoteState(null);
+    const targetNote = notes.find((n) => n.id === id);
+    if (targetNote && targetNote.isLocked && !password) {
+      toast.error('Password required to delete a locked note');
+      return false;
+    }
 
     try {
       const params = new URLSearchParams();
       if (userId) params.set('userId', userId);
+      if (password) params.set('password', password.trim());
       const url = params.toString() ? `/api/notes/${id}?${params.toString()}` : `/api/notes/${id}`;
-      await fetch(url, { method: 'DELETE' });
+
+      const res = await fetch(url, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, password: password ? password.trim() : undefined }),
+      });
+
+      const json = await res.json();
+      if (res.ok && json.success) {
+        setNotes((prev) => prev.filter((n) => n.id !== id));
+        if (activeEditNote?.id === id) setActiveEditNoteState(null);
+        toast.error('Note deleted permanently');
+        return true;
+      } else {
+        toast.error(json.error || json.message || 'Incorrect password. Note not deleted.');
+        return false;
+      }
     } catch (err) {
       console.error('Error deleting note from MongoDB:', err);
+      toast.error('Failed to delete note');
+      return false;
     }
   };
 
@@ -522,8 +583,14 @@ export function NotesProvider({ children }: { children: React.ReactNode }) {
   const emptyTrash = async (): Promise<void> => {
     if (!requireAuth('empty trash')) return;
 
-    setNotes((prev) => prev.filter((n) => !n.isTrashed));
-    toast.success('Trash emptied');
+    const lockedTrashedCount = notes.filter((n) => n.isTrashed && n.isLocked).length;
+    setNotes((prev) => prev.filter((n) => !n.isTrashed || n.isLocked));
+
+    if (lockedTrashedCount > 0) {
+      toast.success(`Trash emptied (${lockedTrashedCount} locked note(s) preserved)`);
+    } else {
+      toast.success('Trash emptied');
+    }
 
     try {
       const params = new URLSearchParams({ action: 'empty-trash' });
@@ -587,25 +654,43 @@ export function NotesProvider({ children }: { children: React.ReactNode }) {
     if (!requireAuth('delete notes')) return;
     if (selectedNoteIds.length === 0) return;
 
-    const count = selectedNoteIds.length;
+    // Filter out password-protected locked notes
+    const lockedIds = selectedNoteIds.filter(
+      (id) => notes.find((n) => n.id === id)?.isLocked
+    );
+    const eligibleIds = selectedNoteIds.filter(
+      (id) => !notes.find((n) => n.id === id)?.isLocked
+    );
+
+    if (eligibleIds.length === 0) {
+      toast.error('Locked notes are password protected and cannot be deleted in bulk');
+      return;
+    }
+
     setNotes((prev) =>
       prev.map((n) =>
-        selectedNoteIds.includes(n.id)
+        eligibleIds.includes(n.id)
           ? { ...n, isTrashed: true, isPinned: false }
           : n
       )
     );
-    const idsToTrash = [...selectedNoteIds];
     setSelectedNoteIds([]);
-    toast.success(`${count} notes moved to trash`);
+
+    if (lockedIds.length > 0) {
+      toast.success(
+        `${eligibleIds.length} note(s) moved to trash (${lockedIds.length} locked note(s) protected)`
+      );
+    } else {
+      toast.success(`${eligibleIds.length} notes moved to trash`);
+    }
 
     try {
       await Promise.all(
-        idsToTrash.map((id) =>
+        eligibleIds.map((id) =>
           fetch(`/api/notes/${id}`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ isTrashed: true, isPinned: false }),
+            body: JSON.stringify({ isTrashed: true, isPinned: false, userId }),
           })
         )
       );
@@ -681,11 +766,29 @@ export function NotesProvider({ children }: { children: React.ReactNode }) {
     if (!requireAuth('delete notes permanently')) return;
     if (selectedNoteIds.length === 0) return;
 
-    const count = selectedNoteIds.length;
-    setNotes((prev) => prev.filter((n) => !selectedNoteIds.includes(n.id)));
-    const idsToDelete = [...selectedNoteIds];
+    // Filter out password-protected locked notes
+    const lockedIds = selectedNoteIds.filter(
+      (id) => notes.find((n) => n.id === id)?.isLocked
+    );
+    const eligibleIds = selectedNoteIds.filter(
+      (id) => !notes.find((n) => n.id === id)?.isLocked
+    );
+
+    if (eligibleIds.length === 0) {
+      toast.error('Locked notes are password protected and cannot be deleted in bulk');
+      return;
+    }
+
+    setNotes((prev) => prev.filter((n) => !eligibleIds.includes(n.id)));
     setSelectedNoteIds([]);
-    toast.error(`${count} notes permanently deleted`);
+
+    if (lockedIds.length > 0) {
+      toast.error(
+        `${eligibleIds.length} note(s) permanently deleted (${lockedIds.length} locked note(s) protected)`
+      );
+    } else {
+      toast.error(`${eligibleIds.length} notes permanently deleted`);
+    }
 
     try {
       const params = new URLSearchParams();
@@ -694,7 +797,7 @@ export function NotesProvider({ children }: { children: React.ReactNode }) {
       await fetch(url, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ids: idsToDelete }),
+        body: JSON.stringify({ ids: eligibleIds }),
       });
     } catch (err) {
       console.error('Error in batch delete permanently:', err);
