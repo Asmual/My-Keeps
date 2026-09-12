@@ -22,6 +22,7 @@ export interface INoteDocument extends Document {
   password?: string | null;
   unlockedUntil?: Date | string | null;
   reminder?: Date | string | null;
+  reminderSent?: boolean;
   userId?: string | null;
   createdAt: Date;
   updatedAt: Date;
@@ -70,6 +71,7 @@ const NoteSchema = new Schema<INoteDocument>(
     password: { type: String, default: null },
     unlockedUntil: { type: Date, default: null, index: true },
     reminder: { type: Date, default: null, index: true },
+    reminderSent: { type: Boolean, default: false, index: true },
     userId: { type: String, default: null, index: true },
   },
   {

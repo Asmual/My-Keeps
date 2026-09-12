@@ -80,6 +80,7 @@ export async function GET(request: NextRequest) {
         isUnlocked: isTemporarilyUnlocked,
         unlockedUntil: rest.unlockedUntil ? new Date(rest.unlockedUntil as string | Date).toISOString() : null,
         reminder: rest.reminder ? new Date(rest.reminder as string | Date).toISOString() : null,
+        reminderSent: Boolean(rest.reminderSent),
       };
     });
 
@@ -126,6 +127,7 @@ export async function POST(request: NextRequest) {
       images: body.images || [],
       audioUrl: body.audioUrl || null,
       reminder: body.reminder ? new Date(body.reminder) : null,
+      reminderSent: false,
       isLocked,
       password: passwordHash,
       userId: body.userId.trim(),

@@ -54,6 +54,7 @@ export async function GET(
         isUnlocked: isTemporarilyUnlocked,
         unlockedUntil: rest.unlockedUntil ? new Date(rest.unlockedUntil as string | Date).toISOString() : null,
         reminder: rest.reminder ? new Date(rest.reminder as string | Date).toISOString() : null,
+        reminderSent: Boolean(rest.reminderSent),
       },
     });
   } catch (error) {
@@ -86,6 +87,7 @@ export async function PATCH(
 
     if (updatePayload.reminder !== undefined) {
       updatePayload.reminder = updatePayload.reminder ? new Date(updatePayload.reminder) : null;
+      updatePayload.reminderSent = false;
     }
 
     const baseQuery = mongoose.isValidObjectId(id)
@@ -149,6 +151,7 @@ export async function PATCH(
         isUnlocked: isTemporarilyUnlocked,
         unlockedUntil: rest.unlockedUntil ? new Date(rest.unlockedUntil as string | Date).toISOString() : null,
         reminder: rest.reminder ? new Date(rest.reminder as string | Date).toISOString() : null,
+        reminderSent: Boolean(rest.reminderSent),
       },
     });
   } catch (error) {
