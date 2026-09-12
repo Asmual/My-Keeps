@@ -30,7 +30,15 @@ export async function GET(
     const { _id, password, ...rest } = (note as unknown) as Record<string, unknown>;
     delete rest.__v;
 
-    if (rest.isLocked) {
+    const hasPassword = Boolean(rest.isLocked);
+    const isTemporarilyUnlocked = Boolean(
+      hasPassword &&
+        rest.unlockedUntil &&
+        new Date(rest.unlockedUntil as string | Date).getTime() > Date.now()
+    );
+    const isEffectivelyLocked = hasPassword && !isTemporarilyUnlocked;
+
+    if (isEffectivelyLocked) {
       rest.content = '';
       rest.images = [];
       rest.checklist = [];
@@ -39,7 +47,13 @@ export async function GET(
 
     return NextResponse.json({
       success: true,
-      data: { ...rest, id: String(_id), isLocked: Boolean(rest.isLocked) },
+      data: {
+        ...rest,
+        id: String(_id),
+        isLocked: hasPassword,
+        isUnlocked: isTemporarilyUnlocked,
+        unlockedUntil: rest.unlockedUntil ? new Date(rest.unlockedUntil as string | Date).toISOString() : null,
+      },
     });
   } catch (error) {
     return NextResponse.json(
@@ -63,9 +77,10 @@ export async function PATCH(
     await connectToDatabase();
 
     const updatePayload = { ...body };
-    // Lock and password are managed exclusively via dedicated /lock and /unlock routes
+    // Lock, password and unlock window are managed exclusively via dedicated /lock and /unlock routes
     delete updatePayload.password;
     delete updatePayload.isLocked;
+    delete updatePayload.unlockedUntil;
     delete updatePayload.userId;
 
     const baseQuery = mongoose.isValidObjectId(id)
@@ -88,7 +103,15 @@ export async function PATCH(
     const { _id, password, ...rest } = (updatedNote as unknown) as Record<string, unknown>;
     delete rest.__v;
 
-    if (rest.isLocked) {
+    const hasPassword = Boolean(rest.isLocked);
+    const isTemporarilyUnlocked = Boolean(
+      hasPassword &&
+        rest.unlockedUntil &&
+        new Date(rest.unlockedUntil as string | Date).getTime() > Date.now()
+    );
+    const isEffectivelyLocked = hasPassword && !isTemporarilyUnlocked;
+
+    if (isEffectivelyLocked) {
       rest.content = '';
       rest.images = [];
       rest.checklist = [];
@@ -97,7 +120,13 @@ export async function PATCH(
 
     return NextResponse.json({
       success: true,
-      data: { ...rest, id: String(_id), isLocked: Boolean(rest.isLocked) },
+      data: {
+        ...rest,
+        id: String(_id),
+        isLocked: hasPassword,
+        isUnlocked: isTemporarilyUnlocked,
+        unlockedUntil: rest.unlockedUntil ? new Date(rest.unlockedUntil as string | Date).toISOString() : null,
+      },
     });
   } catch (error) {
     return NextResponse.json(

@@ -42,6 +42,8 @@ export interface Note {
   images?: string[];
   audioUrl?: string | null;
   isLocked?: boolean;
+  isUnlocked?: boolean;
+  unlockedUntil?: string | null;
   createdAt: string;
   updatedAt: string;
 }

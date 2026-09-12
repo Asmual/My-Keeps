@@ -67,10 +67,11 @@ export function NoteCard({ note, isTrashView = false }: NoteCardProps) {
   const isSelected = selectedNoteIds.includes(note.id);
 
   const colorConfig = NOTE_COLORS[note.color] || NOTE_COLORS.default;
+  const isStrictlyLocked = Boolean(note.isLocked && !note.isUnlocked);
 
   const handleCardClick = () => {
     if (isTrashView) return;
-    if (note.isLocked) {
+    if (isStrictlyLocked) {
       setIsUnlockModalOpen(true);
       return;
     }
@@ -131,7 +132,7 @@ export function NoteCard({ note, isTrashView = false }: NoteCardProps) {
 
       <div>
         {/* Attached images preview */}
-        {!note.isLocked && note.images && note.images.length > 0 && (
+        {!isStrictlyLocked && note.images && note.images.length > 0 && (
           <div className="mb-3 -mx-4 sm:-mx-5 -mt-4 sm:-mt-5 rounded-t-2xl overflow-hidden border-b border-black/5 dark:border-white/10">
             <div
               className={cn(
@@ -160,16 +161,23 @@ export function NoteCard({ note, isTrashView = false }: NoteCardProps) {
         <div className="flex items-start justify-between gap-2 mb-2">
           <div className="flex items-center gap-2 flex-1 min-w-0">
             {note.isLocked && (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 shrink-0">
-                <Lock className="w-2.5 h-2.5" />
-                <span>Locked</span>
-              </span>
+              note.isUnlocked ? (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 shrink-0">
+                  <Lock className="w-2.5 h-2.5" />
+                  <span>Unlocked (3h)</span>
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 shrink-0">
+                  <Lock className="w-2.5 h-2.5" />
+                  <span>Locked</span>
+                </span>
+              )
             )}
             {note.title ? (
               <h3 className="font-semibold text-[#011C40] dark:text-white text-base leading-snug break-words truncate">
                 {note.title}
               </h3>
-            ) : note.isLocked ? (
+            ) : isStrictlyLocked ? (
               <h3 className="font-semibold text-slate-500 dark:text-[#A7EBF2]/70 text-sm leading-snug italic">
                 Locked Note
               </h3>
@@ -230,7 +238,7 @@ export function NoteCard({ note, isTrashView = false }: NoteCardProps) {
           )}
         </div>
 
-        {note.isLocked ? (
+        {isStrictlyLocked ? (
           <div className="py-7 px-3 flex flex-col items-center justify-center text-center space-y-1.5 rounded-xl bg-black/5 dark:bg-white/5 border border-dashed border-black/10 dark:border-white/10 my-2 cursor-pointer">
             <div className="p-2.5 rounded-full bg-amber-500/15 text-amber-500">
               <LockKeyhole className="w-5 h-5" />
@@ -471,27 +479,46 @@ export function NoteCard({ note, isTrashView = false }: NoteCardProps) {
               <Tag className="w-3.5 h-3.5" />
             </button>
 
-            {/* Lock / Unlock button */}
-            <button
-              type="button"
-              onClick={() => {
-                if (!requireAuth('manage note lock')) return;
-                if (note.isLocked) {
-                  setIsUnlockModalOpen(true);
-                } else {
+            {/* Lock / Unlock / Lock-Now button */}
+            {note.isLocked ? (
+              note.isUnlocked ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!requireAuth('lock note')) return;
+                    lockNote(note.id);
+                  }}
+                  title="Lock now (Auto-locks in 3 hours)"
+                  className="p-1.5 rounded-full text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-950/60 transition-colors cursor-pointer"
+                >
+                  <Lock className="w-3.5 h-3.5" />
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!requireAuth('manage note lock')) return;
+                    setIsUnlockModalOpen(true);
+                  }}
+                  title="Unlock note"
+                  className="p-1.5 rounded-full text-amber-500 hover:bg-amber-100 dark:hover:bg-amber-950/60 transition-colors cursor-pointer"
+                >
+                  <Lock className="w-3.5 h-3.5" />
+                </button>
+              )
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  if (!requireAuth('manage note lock')) return;
                   setIsLockModalOpen(true);
-                }
-              }}
-              title={note.isLocked ? 'Unlock note' : 'Lock note with password'}
-              className={cn(
-                'p-1.5 rounded-full transition-colors cursor-pointer',
-                note.isLocked
-                  ? 'text-amber-500 hover:bg-amber-100 dark:hover:bg-amber-950/60'
-                  : 'text-slate-600 dark:text-[#A7EBF2]/80 hover:bg-[#A7EBF2]/20 dark:hover:bg-[#26658C]/50'
-              )}
-            >
-              <Lock className="w-3.5 h-3.5" />
-            </button>
+                }}
+                title="Lock note with password"
+                className="p-1.5 rounded-full text-slate-600 dark:text-[#A7EBF2]/80 hover:bg-[#A7EBF2]/20 dark:hover:bg-[#26658C]/50 transition-colors cursor-pointer"
+              >
+                <Lock className="w-3.5 h-3.5" />
+              </button>
+            )}
 
             {note.isArchived ? (
               <button

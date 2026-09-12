@@ -19,6 +19,7 @@ import {
   ChevronRight,
   Check,
   Lock,
+  LockKeyhole,
 } from 'lucide-react';
 import { GripVertical } from '@/components/ui/GripIcon';
 import { useNotes } from '@/hooks/useNotes';
@@ -180,6 +181,69 @@ function NoteEditModalContent({ note, onClose }: NoteEditModalContentProps) {
     onClose,
   ]);
 
+  const handleLockNow = useCallback(async () => {
+    if (audioPreviewRef.current) {
+      audioPreviewRef.current.pause();
+      audioPreviewRef.current = null;
+    }
+    setIsPlayingAudio(false);
+
+    let finalNoteType: 'text' | 'checklist' | 'image' | 'voice' = noteType;
+    let finalChecklist = checklist.length > 0 ? checklist : undefined;
+    let finalImages = images;
+    let finalAudioUrl = audioUrl;
+
+    if (noteType === 'text') {
+      finalNoteType = 'text';
+      finalChecklist = undefined;
+      finalImages = [];
+      finalAudioUrl = null;
+    } else if (noteType === 'checklist') {
+      finalNoteType = 'checklist';
+      finalImages = [];
+      finalAudioUrl = null;
+    } else if (noteType === 'image') {
+      finalNoteType = 'image';
+      finalChecklist = undefined;
+      finalAudioUrl = null;
+    } else if (noteType === 'voice') {
+      finalNoteType = 'voice';
+      finalChecklist = undefined;
+      finalImages = [];
+    }
+
+    await updateNote(note.id, {
+      title: title.trim(),
+      content: content.trim(),
+      color,
+      isPinned,
+      isImportant,
+      labels,
+      checklist: finalChecklist,
+      noteType: finalNoteType,
+      images: finalImages,
+      audioUrl: finalAudioUrl,
+    });
+
+    await lockNote(note.id);
+    onClose();
+  }, [
+    note.id,
+    noteType,
+    title,
+    content,
+    color,
+    isPinned,
+    isImportant,
+    labels,
+    checklist,
+    images,
+    audioUrl,
+    updateNote,
+    lockNote,
+    onClose,
+  ]);
+
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
@@ -295,9 +359,9 @@ function NoteEditModalContent({ note, onClose }: NoteEditModalContentProps) {
             />
             <div className="flex items-center gap-1 shrink-0">
               {isLocked && (
-                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 shrink-0">
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 shrink-0">
                   <Lock className="w-3 h-3" />
-                  <span>Locked</span>
+                  <span>Unlocked (3h)</span>
                 </span>
               )}
 
@@ -671,26 +735,36 @@ function NoteEditModalContent({ note, onClose }: NoteEditModalContentProps) {
                 </button>
               )}
 
-              {/* Lock / Unlock button */}
-              <button
-                type="button"
-                onClick={() => {
-                  if (isLocked) {
-                    setIsRemoveLockModalOpen(true);
-                  } else {
-                    setIsLockModalOpen(true);
-                  }
-                }}
-                title={isLocked ? 'Remove password protection' : 'Lock note with password'}
-                className={cn(
-                  'p-1.5 rounded-full transition-colors cursor-pointer',
-                  isLocked
-                    ? 'text-amber-500 bg-amber-100 dark:bg-amber-950/60'
-                    : 'text-slate-600 dark:text-[#A7EBF2]/80 hover:bg-[#A7EBF2]/20 dark:hover:bg-[#26658C]/50'
-                )}
-              >
-                <Lock className="w-4 h-4" />
-              </button>
+              {/* Lock / Unlock / Remove-Lock buttons */}
+              {isLocked ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={handleLockNow}
+                    title="Lock note now"
+                    className="p-1.5 rounded-full text-amber-500 bg-amber-100 dark:bg-amber-950/60 hover:bg-amber-200 dark:hover:bg-amber-900/80 transition-colors cursor-pointer"
+                  >
+                    <Lock className="w-4 h-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsRemoveLockModalOpen(true)}
+                    title="Remove password protection"
+                    className="p-1.5 rounded-full text-slate-500 dark:text-[#A7EBF2]/70 hover:bg-[#A7EBF2]/20 dark:hover:bg-[#26658C]/50 transition-colors cursor-pointer"
+                  >
+                    <LockKeyhole className="w-4 h-4" />
+                  </button>
+                </>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setIsLockModalOpen(true)}
+                  title="Lock note with password"
+                  className="p-1.5 rounded-full text-slate-600 dark:text-[#A7EBF2]/80 hover:bg-[#A7EBF2]/20 dark:hover:bg-[#26658C]/50 transition-colors cursor-pointer"
+                >
+                  <Lock className="w-4 h-4" />
+                </button>
+              )}
 
               {note.isArchived ? (
                 <button

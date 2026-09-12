@@ -66,7 +66,7 @@ interface NotesContextType {
   addLabel: (id: string, label: string) => Promise<void>;
   removeLabel: (id: string, label: string) => Promise<void>;
   toggleCheckItem: (noteId: string, itemId: string) => Promise<void>;
-  lockNote: (id: string, password: string) => Promise<boolean>;
+  lockNote: (id: string, password?: string) => Promise<boolean>;
   unlockNote: (id: string, password: string) => Promise<Note | null>;
   removeLock: (id: string, password: string) => Promise<boolean>;
 }
@@ -213,6 +213,55 @@ export function NotesProvider({ children }: { children: React.ReactNode }) {
     };
   }, [userId]);
 
+  // Background Auto-lock timer for notes unlocked past 3 hours
+  useEffect(() => {
+    const checkAutoLock = () => {
+      const now = Date.now();
+      setNotes((prevNotes) => {
+        let hasChanges = false;
+        const updated = prevNotes.map((note) => {
+          if (
+            note.isLocked &&
+            note.isUnlocked &&
+            note.unlockedUntil &&
+            new Date(note.unlockedUntil).getTime() <= now
+          ) {
+            hasChanges = true;
+            return {
+              ...note,
+              isUnlocked: false,
+              unlockedUntil: null,
+              content: '',
+              images: [],
+              checklist: [],
+              audioUrl: null,
+            };
+          }
+          return note;
+        });
+
+        if (hasChanges) {
+          if (
+            activeEditNote &&
+            activeEditNote.isLocked &&
+            activeEditNote.unlockedUntil &&
+            new Date(activeEditNote.unlockedUntil).getTime() <= now
+          ) {
+            setActiveEditNoteState(null);
+          }
+          toast('Note automatically locked (3 hours session expired)', {
+            icon: '🔒',
+          });
+          return updated;
+        }
+        return prevNotes;
+      });
+    };
+
+    const intervalId = setInterval(checkAutoLock, 30000); // checks every 30 seconds
+    return () => clearInterval(intervalId);
+  }, [activeEditNote]);
+
   // Extract all unique labels dynamically from active notes
   const allLabels = useMemo(() => {
     const labelSet = new Set<string>();
@@ -298,11 +347,12 @@ export function NotesProvider({ children }: { children: React.ReactNode }) {
   const updateNote = async (id: string, updates: Partial<Note>): Promise<void> => {
     if (!requireAuth('update notes')) return;
 
-    // Optimistic UI update with lock masking
-    const isLockedNote =
+    // Optimistic UI update with lock masking (only mask if strictly locked, not temporarily unlocked)
+    const targetNote = notes.find((x) => x.id === id);
+    const isStrictlyLocked =
       updates.isLocked !== undefined
-        ? updates.isLocked
-        : (notes.find((x) => x.id === id)?.isLocked ?? false);
+        ? Boolean(updates.isLocked && !updates.isUnlocked)
+        : Boolean(targetNote?.isLocked && !targetNote?.isUnlocked);
 
     setNotes((prev) =>
       prev.map((n) =>
@@ -310,7 +360,7 @@ export function NotesProvider({ children }: { children: React.ReactNode }) {
           ? {
               ...n,
               ...updates,
-              ...(isLockedNote
+              ...(isStrictlyLocked
                 ? { content: '', images: [], checklist: [], audioUrl: null }
                 : {}),
               updatedAt: new Date().toISOString(),
@@ -780,14 +830,21 @@ export function NotesProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // LOCK NOTE
-  const lockNote = async (id: string, password: string): Promise<boolean> => {
+  // LOCK NOTE (supports new password or 'lock-now' for existing locked notes)
+  const lockNote = async (id: string, password?: string): Promise<boolean> => {
     if (!requireAuth('lock notes')) return false;
     try {
+      const payload: Record<string, any> = { userId };
+      if (password && password.trim()) {
+        payload.password = password;
+      } else {
+        payload.action = 'lock-now';
+      }
+
       const res = await fetch(`/api/notes/${id}/lock`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password, userId }),
+        body: JSON.stringify(payload),
       });
       const json = await res.json();
       if (res.ok && json.success) {
@@ -797,6 +854,8 @@ export function NotesProvider({ children }: { children: React.ReactNode }) {
               ? {
                   ...n,
                   isLocked: true,
+                  isUnlocked: false,
+                  unlockedUntil: null,
                   content: '',
                   images: [],
                   checklist: [],
@@ -805,6 +864,10 @@ export function NotesProvider({ children }: { children: React.ReactNode }) {
               : n
           )
         );
+        if (activeEditNote && activeEditNote.id === id) {
+          setActiveEditNoteState(null);
+        }
+        toast.success(password ? 'Note locked with password' : 'Note locked');
         return true;
       } else {
         toast.error(json.error || json.message || 'Failed to lock note');
@@ -817,7 +880,7 @@ export function NotesProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // UNLOCK NOTE
+  // UNLOCK NOTE (3 hours session)
   const unlockNote = async (id: string, password: string): Promise<Note | null> => {
     try {
       const res = await fetch(`/api/notes/${id}/unlock`, {
@@ -829,11 +892,15 @@ export function NotesProvider({ children }: { children: React.ReactNode }) {
       if (res.ok && json.success && json.data) {
         const fullNote = json.data as Note;
         setNotes((prev) => prev.map((n) => (n.id === id ? fullNote : n)));
+        toast.success('Note unlocked for 3 hours');
         return fullNote;
+      } else {
+        toast.error(json.error || 'Incorrect password');
+        return null;
       }
-      return null;
     } catch (err) {
       console.error('Error unlocking note:', err);
+      toast.error('Failed to unlock note');
       return null;
     }
   };

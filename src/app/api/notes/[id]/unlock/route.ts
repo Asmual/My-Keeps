@@ -47,12 +47,25 @@ export async function POST(
     }
 
     // Password verified!
+    let isTemporarilyUnlocked = false;
+    let unlockedUntilIso: string | null = null;
+
     if (action === 'remove-lock') {
       await NoteModel.findOneAndUpdate(query, {
-        $set: { isLocked: false, password: null },
+        $set: { isLocked: false, password: null, unlockedUntil: null },
       });
       note.isLocked = false;
       note.password = null;
+      note.unlockedUntil = null;
+    } else {
+      // 3-hour unlock window
+      const unlockedUntil = new Date(Date.now() + 3 * 60 * 60 * 1000);
+      await NoteModel.findOneAndUpdate(query, {
+        $set: { unlockedUntil },
+      });
+      note.unlockedUntil = unlockedUntil;
+      isTemporarilyUnlocked = true;
+      unlockedUntilIso = unlockedUntil.toISOString();
     }
 
     const obj = (note.toObject() as unknown) as Record<string, unknown>;
@@ -61,8 +74,14 @@ export async function POST(
 
     return NextResponse.json({
       success: true,
-      message: action === 'remove-lock' ? 'Lock removed successfully' : 'Note unlocked successfully',
-      data: { ...obj, id: String(obj._id) },
+      message: action === 'remove-lock' ? 'Lock removed successfully' : 'Note unlocked for 3 hours',
+      data: {
+        ...obj,
+        id: String(obj._id),
+        isLocked: Boolean(note.isLocked),
+        isUnlocked: isTemporarilyUnlocked,
+        unlockedUntil: unlockedUntilIso,
+      },
     });
   } catch (error) {
     return NextResponse.json(

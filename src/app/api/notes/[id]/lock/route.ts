@@ -11,14 +11,7 @@ export async function POST(
   try {
     const { id } = await params;
     const body = await request.json();
-    const { password, userId } = body;
-
-    if (!password || typeof password !== 'string' || password.trim().length < 4) {
-      return NextResponse.json(
-        { success: false, error: 'Password must be at least 4 characters' },
-        { status: 400 }
-      );
-    }
+    const { password, userId, action } = body;
 
     await connectToDatabase();
 
@@ -30,12 +23,55 @@ export async function POST(
       ? { ...baseQuery, userId: userId.trim() }
       : baseQuery;
 
+    // If manual re-lock action requested on existing locked note:
+    if (action === 'lock-now') {
+      const reLocked = await NoteModel.findOneAndUpdate(
+        query,
+        {
+          $set: {
+            unlockedUntil: null,
+          },
+        },
+        { returnDocument: 'after' }
+      ).lean();
+
+      if (!reLocked) {
+        return NextResponse.json({ success: false, error: 'Note not found' }, { status: 404 });
+      }
+
+      const { _id, password: _pwd, __v, ...rest } = (reLocked as unknown) as Record<string, unknown>;
+
+      return NextResponse.json({
+        success: true,
+        message: 'Note locked successfully',
+        data: {
+          ...rest,
+          id: String(_id),
+          isLocked: true,
+          isUnlocked: false,
+          unlockedUntil: null,
+          content: '',
+          images: [],
+          checklist: [],
+          audioUrl: null,
+        },
+      });
+    }
+
+    if (!password || typeof password !== 'string' || password.trim().length < 4) {
+      return NextResponse.json(
+        { success: false, error: 'Password must be at least 4 characters' },
+        { status: 400 }
+      );
+    }
+
     const updated = await NoteModel.findOneAndUpdate(
       query,
       {
         $set: {
           isLocked: true,
           password: hashNotePassword(password.trim()),
+          unlockedUntil: null,
         },
       },
       { returnDocument: 'after' }

@@ -20,6 +20,7 @@ export interface INoteDocument extends Document {
   audioUrl?: string | null;
   isLocked: boolean;
   password?: string | null;
+  unlockedUntil?: Date | string | null;
   userId?: string | null;
   createdAt: Date;
   updatedAt: Date;
@@ -66,6 +67,7 @@ const NoteSchema = new Schema<INoteDocument>(
     audioUrl: { type: String, default: null },
     isLocked: { type: Boolean, default: false, index: true },
     password: { type: String, default: null },
+    unlockedUntil: { type: Date, default: null, index: true },
     userId: { type: String, default: null, index: true },
   },
   {

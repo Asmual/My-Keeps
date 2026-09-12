@@ -54,7 +54,16 @@ export async function GET(request: NextRequest) {
       const doc = (n as unknown) as Record<string, unknown>;
       const { _id, password, ...rest } = doc;
       delete rest.__v;
-      if (rest.isLocked) {
+
+      const hasPassword = Boolean(rest.isLocked);
+      const isTemporarilyUnlocked = Boolean(
+        hasPassword &&
+          rest.unlockedUntil &&
+          new Date(rest.unlockedUntil as string | Date).getTime() > Date.now()
+      );
+      const isEffectivelyLocked = hasPassword && !isTemporarilyUnlocked;
+
+      if (isEffectivelyLocked) {
         rest.content = '';
         rest.images = [];
         rest.checklist = [];
@@ -63,7 +72,9 @@ export async function GET(request: NextRequest) {
       return {
         ...rest,
         id: String(_id),
-        isLocked: Boolean(rest.isLocked),
+        isLocked: hasPassword,
+        isUnlocked: isTemporarilyUnlocked,
+        unlockedUntil: rest.unlockedUntil ? new Date(rest.unlockedUntil as string | Date).toISOString() : null,
       };
     });
 
