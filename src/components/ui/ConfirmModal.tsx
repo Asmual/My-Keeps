@@ -2,7 +2,7 @@
 
 import React, { useEffect, useSyncExternalStore } from 'react';
 import { createPortal } from 'react-dom';
-import { AlertTriangle, Trash2, X } from 'lucide-react';
+import { AlertTriangle, Trash2, X, Archive } from 'lucide-react';
 import { Button } from './Button';
 import { cn } from '@/lib/utils';
 
@@ -67,11 +67,15 @@ export function ConfirmModal({
               'p-2.5 rounded-2xl shrink-0',
               variant === 'danger'
                 ? 'bg-rose-100 text-rose-600 dark:bg-rose-950/60 dark:text-rose-400 border border-rose-200 dark:border-rose-900/60'
+                : variant === 'primary'
+                ? 'bg-[#A7EBF2]/30 text-[#023859] dark:text-[#A7EBF2] border border-[#54ACBF]/40'
                 : 'bg-amber-100 text-amber-600 dark:bg-amber-950/60 dark:text-amber-400'
             )}
           >
             {variant === 'danger' ? (
               <Trash2 className="w-5 h-5" />
+            ) : variant === 'primary' ? (
+              <Archive className="w-5 h-5" />
             ) : (
               <AlertTriangle className="w-5 h-5" />
             )}

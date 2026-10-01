@@ -83,6 +83,7 @@ function NoteEditModalContent({ note, onClose }: NoteEditModalContentProps) {
   const [newLabelInput, setNewLabelInput] = useState('');
   const [showLabelInput, setShowLabelInput] = useState(false);
   const [isConfirmTrashOpen, setIsConfirmTrashOpen] = useState(false);
+  const [isConfirmArchiveOpen, setIsConfirmArchiveOpen] = useState(false);
   const [isDeleteLockModalOpen, setIsDeleteLockModalOpen] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
 
@@ -424,7 +425,7 @@ function NoteEditModalContent({ note, onClose }: NoteEditModalContentProps) {
         <div
           onClick={(e) => e.stopPropagation()}
           className={cn(
-            'w-full flex flex-col rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-2xl border transition-all duration-200 animate-in zoom-in-95 overflow-hidden',
+            'w-full flex flex-col rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-2xl border transition-all duration-200 animate-in zoom-in-95',
             isFullscreen
               ? 'w-[96vw] max-w-6xl h-[92vh] sm:h-[94vh]'
               : 'max-w-3xl sm:max-w-4xl max-h-[85vh] sm:max-h-[90vh]',
@@ -927,10 +928,7 @@ function NoteEditModalContent({ note, onClose }: NoteEditModalContentProps) {
               ) : (
                 <button
                   type="button"
-                  onClick={() => {
-                    archiveNote(note.id);
-                    onClose();
-                  }}
+                  onClick={() => setIsConfirmArchiveOpen(true)}
                   title="Archive"
                   className="p-1.5 rounded-full text-slate-600 dark:text-[#A7EBF2]/80 hover:bg-[#A7EBF2]/20 dark:hover:bg-[#26658C]/50 transition-colors cursor-pointer"
                 >
@@ -998,6 +996,22 @@ function NoteEditModalContent({ note, onClose }: NoteEditModalContentProps) {
         confirmText="Delete"
         cancelText="Cancel"
         variant="danger"
+      />
+
+      {/* Archive note confirmation dialog */}
+      <ConfirmModal
+        isOpen={isConfirmArchiveOpen}
+        onClose={() => setIsConfirmArchiveOpen(false)}
+        onConfirm={() => {
+          archiveNote(note.id);
+          setIsConfirmArchiveOpen(false);
+          onClose();
+        }}
+        title="Archive Note"
+        description="Are you sure you want to archive this note?"
+        confirmText="Archive"
+        cancelText="Cancel"
+        variant="primary"
       />
 
       {/* Password Confirmation Modal for Deleting Locked Note */}

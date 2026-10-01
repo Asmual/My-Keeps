@@ -508,10 +508,6 @@ export function NotesProvider({
     if (!note) return;
 
     const nextPinned = !note.isPinned;
-    toast(nextPinned ? 'Note pinned' : 'Note unpinned', {
-      icon: nextPinned ? '📌' : '📍',
-    });
-
     await updateNote(id, { isPinned: nextPinned });
   };
 
@@ -523,10 +519,6 @@ export function NotesProvider({
     if (!note) return;
 
     const nextImportant = !note.isImportant;
-    toast(nextImportant ? 'Marked as Important ⭐' : 'Removed from Important', {
-      icon: nextImportant ? '⭐' : '☆',
-    });
-
     await updateNote(id, { isImportant: nextImportant });
   };
 

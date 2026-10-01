@@ -62,6 +62,7 @@ export function NoteCard({ note, isTrashView = false }: NoteCardProps) {
   const [showTagInput, setShowTagInput] = useState(false);
   const [tagInputValue, setTagInputValue] = useState('');
   const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = useState(false);
+  const [isConfirmArchiveOpen, setIsConfirmArchiveOpen] = useState(false);
   const [isDeleteLockModalOpen, setIsDeleteLockModalOpen] = useState(false);
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
   const [showCompleted, setShowCompleted] = useState(false);
@@ -491,7 +492,7 @@ export function NoteCard({ note, isTrashView = false }: NoteCardProps) {
         {!isTrashView ? (
           <div
             onClick={(e) => e.stopPropagation()}
-            className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150"
+            className="flex items-center gap-0.5 opacity-90 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity duration-150 relative z-20"
           >
             <ColorPicker
               currentColor={note.color}
@@ -569,7 +570,7 @@ export function NoteCard({ note, isTrashView = false }: NoteCardProps) {
             ) : (
               <button
                 type="button"
-                onClick={() => archiveNote(note.id)}
+                onClick={() => setIsConfirmArchiveOpen(true)}
                 title="Archive note"
                 className="p-1.5 rounded-full text-slate-600 dark:text-[#A7EBF2]/80 hover:bg-[#A7EBF2]/20 dark:hover:bg-[#26658C]/50 transition-colors cursor-pointer"
               >
@@ -638,6 +639,21 @@ export function NoteCard({ note, isTrashView = false }: NoteCardProps) {
         confirmText="Delete"
         cancelText="Cancel"
         variant="danger"
+      />
+
+      {/* Archive Note Confirmation Modal */}
+      <ConfirmModal
+        isOpen={isConfirmArchiveOpen}
+        onClose={() => setIsConfirmArchiveOpen(false)}
+        onConfirm={() => {
+          archiveNote(note.id);
+          setIsConfirmArchiveOpen(false);
+        }}
+        title="Archive Note"
+        description="Are you sure you want to archive this note?"
+        confirmText="Archive"
+        cancelText="Cancel"
+        variant="primary"
       />
 
       {/* Password Confirmation Modal for Deleting Locked Note */}

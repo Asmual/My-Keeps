@@ -12,6 +12,7 @@ interface ColorPickerProps {
   className?: string;
   buttonClassName?: string;
   align?: 'left' | 'right';
+  placement?: 'bottom' | 'top';
 }
 
 export function ColorPicker({
@@ -19,7 +20,8 @@ export function ColorPicker({
   onSelectColor,
   className,
   buttonClassName,
-  align = 'right',
+  align = 'left',
+  placement = 'bottom',
 }: ColorPickerProps) {
   const [isOpen, setIsOpen] = useState(false);
   const popoverRef = useRef<HTMLDivElement>(null);
@@ -39,7 +41,7 @@ export function ColorPicker({
   }, [isOpen]);
 
   return (
-    <div className={cn('relative inline-block', className)} ref={popoverRef}>
+    <div className={cn('relative inline-block', isOpen && 'z-50', className)} ref={popoverRef}>
       <button
         type="button"
         title="Background options"
@@ -59,7 +61,8 @@ export function ColorPicker({
         <div
           onClick={(e) => e.stopPropagation()}
           className={cn(
-            'absolute z-50 bottom-full mb-2 p-2.5 bg-white dark:bg-[#023859] rounded-2xl shadow-xl border border-[#A7EBF2] dark:border-[#26658C] grid grid-cols-6 gap-2 w-[230px] max-w-[calc(100vw-2rem)] animate-in fade-in zoom-in-95 duration-150',
+            'absolute z-[60] p-2.5 bg-white dark:bg-[#023859] rounded-2xl shadow-2xl border border-[#A7EBF2] dark:border-[#26658C] grid grid-cols-6 gap-2 w-[230px] max-w-[calc(100vw-2rem)] animate-in fade-in zoom-in-95 duration-150',
+            placement === 'bottom' ? 'top-full mt-2' : 'bottom-full mb-2',
             align === 'left' ? 'left-0' : 'right-0'
           )}
         >

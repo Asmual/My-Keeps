@@ -11,6 +11,7 @@ interface ReminderPickerProps {
   buttonClassName?: string;
   iconClassName?: string;
   align?: 'left' | 'right';
+  placement?: 'bottom' | 'top';
 }
 
 export function ReminderPicker({
@@ -18,7 +19,8 @@ export function ReminderPicker({
   onSelectReminder,
   buttonClassName,
   iconClassName = 'w-3.5 h-3.5',
-  align = 'right',
+  align = 'left',
+  placement = 'bottom',
 }: ReminderPickerProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isCustomMode, setIsCustomMode] = useState(false);
@@ -112,7 +114,7 @@ export function ReminderPicker({
   const hasReminder = Boolean(currentReminder);
 
   return (
-    <div className="relative inline-block" ref={popoverRef}>
+    <div className={cn('relative inline-block', isOpen && 'z-50')} ref={popoverRef}>
       <button
         type="button"
         onClick={(e) => {
@@ -137,7 +139,8 @@ export function ReminderPicker({
         <div
           onClick={(e) => e.stopPropagation()}
           className={cn(
-            'absolute z-50 bottom-full sm:bottom-auto sm:top-full mt-1 mb-1 w-64 max-w-[calc(100vw-2rem)] rounded-2xl bg-white dark:bg-[#011C40] border border-[#A7EBF2] dark:border-[#26658C] shadow-2xl p-2.5 text-xs text-[#011C40] dark:text-slate-200 animate-in fade-in zoom-in-95 duration-150',
+            'absolute z-[60] w-64 max-w-[calc(100vw-2rem)] rounded-2xl bg-white dark:bg-[#011C40] border border-[#A7EBF2] dark:border-[#26658C] shadow-2xl p-2.5 text-xs text-[#011C40] dark:text-slate-200 animate-in fade-in zoom-in-95 duration-150',
+            placement === 'bottom' ? 'top-full mt-2' : 'bottom-full mb-2',
             align === 'left' ? 'left-0' : 'right-0'
           )}
         >
