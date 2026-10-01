@@ -51,11 +51,15 @@
 - **Data Masking**: When a note is locked, its text content, checklist items, image attachments, and voice memos are masked in the UI and stripped from standard API payloads until unlocked with the correct password.
 - **Atomic Operations**: Locking and unlocking utilize atomic MongoDB update operators (`$set`) to ensure state consistency across refreshes and concurrent sessions.
 
-### 📝 Multi-Format Note Authoring
-- **Text Notes**: Clean, responsive, auto-resizing text editor with title and content fields.
-- **Interactive Checklists**: Drag-and-drop to-do lists with checkbox completion, strike-through styling, and collapsible completed items.
+### 📝 Multi-Format Note Authoring & Google Keep Experience
+- **Text Notes**: Clean, responsive, auto-resizing text editor with rich formatting and floating toolbar.
+- **Google Keep Style Interactive Checklists**: Inline editing directly beneath the title without extra fluff. Pressing `Enter` instantly creates and autofocuses the next item; `Backspace` cleanly removes empty items. Toggling is strictly isolated to the checkbox, while card body clicks smoothly launch the full edit modal.
 - **Image Notes**: Attach and preview screenshots, photos, and diagram images directly inside note cards.
-- **Voice Memos**: In-browser audio recording with live waveform indicators, integrated audio player, and persistent cloud storage.
+- **Resilient Voice Memos & AI Dictation**: Continuous voice-to-text powered by Web Speech API with automatic restart on speech pauses, cross-browser multi-MIME audio capture, and fallback transcription via Google Gemini AI models.
+
+### 🧭 Smooth Sliding Navigation & Luna UX
+- **Smooth Slide-Out Drawer**: Gentle 500ms left-to-right drawer animation with smooth backdrop fade and left arrow (`ArrowLeft`) return button.
+- **Desktop & Mobile Responsiveness**: Seamless collapsible sidebar transitions without abrupt DOM mount/unmount flickers.
 
 ### 🎨 Luna Design System & Theming
 - **Dark Mode by Default**: Engineered with deep oceanic hues (`#011C40`, `#023859`, `#26658C`) accented by luminous turquoise (`#54ACBF`, `#A7EBF2`) to reduce eye strain.
