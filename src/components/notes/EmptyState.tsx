@@ -14,6 +14,7 @@ import {
   LucideIcon,
   Sparkles,
   LogIn,
+  StickyNote,
 } from 'lucide-react';
 import { useNotes } from '@/hooks/useNotes';
 import { GoogleAuthButton } from '@/components/auth/GoogleAuthButton';
@@ -21,6 +22,7 @@ import { Button } from '@/components/ui/Button';
 
 type EmptyStateType =
   | 'notes'
+  | 'textNotes'
   | 'archive'
   | 'trash'
   | 'checklists'
@@ -51,6 +53,12 @@ export function EmptyState({ type, customMessage }: EmptyStateProps) {
       icon: Lightbulb,
       title: 'No notes yet',
       description: 'Capture thoughts, tasks, and ideas above in Luna workspace.',
+      colorClass: 'text-[#54ACBF] bg-[#54ACBF]/15 dark:bg-[#023859] border border-[#54ACBF]/40',
+    },
+    textNotes: {
+      icon: StickyNote,
+      title: 'No text notes yet',
+      description: 'Create clean text notes with rich formatting above.',
       colorClass: 'text-[#54ACBF] bg-[#54ACBF]/15 dark:bg-[#023859] border border-[#54ACBF]/40',
     },
     archive: {

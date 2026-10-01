@@ -19,6 +19,7 @@ import {
   X,
   Search,
   ArrowLeft,
+  Layers,
 } from 'lucide-react';
 import { useNotes } from '@/hooks/useNotes';
 import { cn } from '@/lib/utils';
@@ -54,11 +55,18 @@ export function Sidebar() {
 
   const navItems = [
     {
-      label: 'Text Note',
+      label: 'All Notes',
       href: '/',
+      icon: Layers,
+      count: counts.active,
+      active: (pathname === '/' || pathname === '/all-notes') && !selectedLabel,
+    },
+    {
+      label: 'Text Note',
+      href: '/text-notes',
       icon: StickyNote,
       count: counts.textNotes,
-      active: pathname === '/' && !selectedLabel,
+      active: pathname === '/text-notes',
     },
     {
       label: 'Checklist Note',

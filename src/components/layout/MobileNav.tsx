@@ -4,7 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
-  StickyNote,
+  Layers,
   CheckSquare,
   Image as ImageIcon,
   Mic,
@@ -18,7 +18,7 @@ export function MobileNav() {
   const { setSelectedLabel, toggleSidebar, sidebarOpen } = useNotes();
 
   const links = [
-    { label: 'Notes', href: '/', icon: StickyNote },
+    { label: 'All Notes', href: '/', icon: Layers },
     { label: 'Checklists', href: '/checklists', icon: CheckSquare },
     { label: 'Images', href: '/image-notes', icon: ImageIcon },
     { label: 'Voice', href: '/voice-notes', icon: Mic },

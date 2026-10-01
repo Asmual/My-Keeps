@@ -12,6 +12,7 @@ interface NoteGridProps {
   isTrashView?: boolean;
   emptyType?:
     | 'notes'
+    | 'textNotes'
     | 'archive'
     | 'trash'
     | 'checklists'
