@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Note, NoteColorId, ViewMode } from '@/types/note';
 import { useSession } from '@/lib/auth-client';
 import { AuthPromptModal } from '@/components/auth/AuthPromptModal';
+import type { AuthSession } from '@/lib/auth/session';
 import toast from 'react-hot-toast';
 
 interface NotesContextType {
@@ -73,15 +74,26 @@ interface NotesContextType {
   removeLock: (id: string, password: string) => Promise<boolean>;
 }
 
+interface NotesProviderProps {
+  children: React.ReactNode;
+  initialSession?: AuthSession | null;
+  initialNotes?: Note[];
+}
+
 const NotesContext = createContext<NotesContextType | undefined>(undefined);
 
-export function NotesProvider({ children }: { children: React.ReactNode }) {
+export function NotesProvider({
+  children,
+  initialSession,
+  initialNotes,
+}: NotesProviderProps) {
   const router = useRouter();
-  const { data: session } = useSession();
+  const { data: clientSession } = useSession();
+  const session = clientSession !== undefined ? clientSession : initialSession;
 
-  // Completely dynamic: starts with empty array and loads from MongoDB
-  const [notes, setNotes] = useState<Note[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  // Hydrate initial notes from SSR/Redis cache to avoid loading skeleton flicker
+  const [notes, setNotes] = useState<Note[]>(initialNotes || []);
+  const [isLoading, setIsLoading] = useState(!initialNotes && Boolean(initialSession?.user));
 
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState<ViewMode>('grid');

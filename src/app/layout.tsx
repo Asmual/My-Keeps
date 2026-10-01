@@ -5,6 +5,7 @@ import { ThemeProvider } from '@/components/providers/ThemeProvider';
 import { NotesProvider } from '@/components/providers/NotesProvider';
 import { Toaster } from 'react-hot-toast';
 import { NoteEditModal } from '@/components/notes/NoteEditModal';
+import { getServerSession } from '@/lib/auth/session';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -25,11 +26,13 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const session = await getServerSession();
+
   return (
     <html
       lang="en"
@@ -59,7 +62,7 @@ export default function RootLayout({
         className="min-h-full flex flex-col bg-background text-foreground antialiased selection:bg-amber-500/20 selection:text-amber-900 dark:selection:text-amber-200"
       >
         <ThemeProvider>
-          <NotesProvider>
+          <NotesProvider initialSession={session}>
             {children}
             <NoteEditModal />
             <Toaster

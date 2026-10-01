@@ -21,11 +21,18 @@ import { useTheme } from '@/hooks/useTheme';
 import { useSession, signOut } from '@/lib/auth-client';
 import { Button } from '@/components/ui/Button';
 import { ProfileModal } from '@/components/profile/ProfileModal';
+import type { AuthSession } from '@/lib/auth/session';
 import toast from 'react-hot-toast';
 
-export function Header() {
+interface HeaderProps {
+  initialSession?: AuthSession | null;
+}
+
+export function Header({ initialSession }: HeaderProps = {}) {
   const router = useRouter();
-  const { data: session } = useSession();
+  const { data: clientSession } = useSession();
+  // Prioritize clientSession once resolved, fallback to server-rendered initialSession to eliminate flicker
+  const session = clientSession !== undefined ? clientSession : initialSession;
   const {
     searchQuery,
     setSearchQuery,
@@ -38,7 +45,9 @@ export function Header() {
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
-  const [profileImage, setProfileImage] = useState<string | null>(null);
+  const [profileImage, setProfileImage] = useState<string | null>(
+    initialSession?.user?.image || null
+  );
   const menuRef = useRef<HTMLDivElement>(null);
 
   // Synchronize profile avatar from localStorage and MongoDB Atlas on mount / session change
