@@ -24,6 +24,7 @@ import { GripVertical } from '@/components/ui/GripIcon';
 import { useNotes } from '@/hooks/useNotes';
 import { ColorPicker } from './ColorPicker';
 import { ReminderPicker } from './ReminderPicker';
+import { TextFormatPicker } from './TextFormatPicker';
 import { RichTextEditor } from './RichTextEditor';
 import { VoiceRecorder } from './VoiceRecorder';
 import { LockModal } from './LockModal';
@@ -813,6 +814,11 @@ export function CreateNoteBar({
                 >
                   <Tag className="w-4 h-4" />
                 </button>
+
+                {/* Google Keep style Text Formatting 'A' button */}
+                {!isChecklistMode && (
+                  <TextFormatPicker placement="top" align="left" />
+                )}
 
                 {/* Lock / Unlock button */}
                 <button

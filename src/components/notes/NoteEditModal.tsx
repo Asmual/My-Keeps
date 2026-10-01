@@ -24,12 +24,14 @@ import {
   Minimize2,
   Bell,
   Clock,
+  ArrowLeft,
 } from 'lucide-react';
 import { GripVertical } from '@/components/ui/GripIcon';
 import { useNotes } from '@/hooks/useNotes';
 import { NOTE_COLORS } from '@/lib/constants';
 import { ColorPicker } from './ColorPicker';
 import { ReminderPicker } from './ReminderPicker';
+import { TextFormatPicker } from './TextFormatPicker';
 import { RichTextEditor } from './RichTextEditor';
 import { VoiceRecorder } from './VoiceRecorder';
 import { LockModal } from './LockModal';
@@ -420,30 +422,43 @@ function NoteEditModalContent({ note, onClose }: NoteEditModalContentProps) {
     <>
       <div
         onClick={handleSaveAndClose}
-        className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-[#011C40]/60 backdrop-blur-xs animate-in fade-in duration-150"
+        className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-4 bg-black/60 sm:bg-[#011C40]/60 backdrop-blur-xs animate-in fade-in duration-150 overflow-hidden"
       >
         <div
           onClick={(e) => e.stopPropagation()}
           className={cn(
-            'w-full flex flex-col rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-2xl border transition-all duration-200 animate-in zoom-in-95',
-            isFullscreen
-              ? 'w-[96vw] max-w-6xl h-[92vh] sm:h-[94vh]'
-              : 'max-w-3xl sm:max-w-4xl max-h-[85vh] sm:max-h-[90vh]',
+            'w-full flex flex-col transition-all duration-200 animate-in zoom-in-95',
+            // Mobile: Full screen standalone page like Google Keep (no margin, full viewport height, rounded-none)
+            'h-[100dvh] max-h-[100dvh] rounded-none border-0 p-4 sm:p-6',
+            // Desktop (sm:): Centered floating dialog with rounded corners and borders
+            'sm:h-auto sm:max-h-[90vh] sm:rounded-3xl sm:border sm:shadow-2xl sm:max-w-3xl md:max-w-4xl',
+            isFullscreen && 'sm:max-w-[96vw] sm:h-[94vh] sm:max-h-[94vh]',
             colorConfig.bgLight,
             colorConfig.bgDark,
             colorConfig.borderLight,
             colorConfig.borderDark
           )}
         >
-          {/* Header: Title & Pin / Star / Fullscreen (Fixed at top) */}
-          <div className="flex items-center justify-between gap-3 mb-3 shrink-0">
-            <input
-              type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Title"
-              className="w-full min-w-0 bg-transparent font-semibold text-lg text-[#011C40] dark:text-white placeholder-slate-400 dark:placeholder-[#A7EBF2]/50 focus:outline-none"
-            />
+          {/* Header: Back arrow (Google Keep mobile style) + Title & Pin / Star / Fullscreen (Fixed at top) */}
+          <div className="flex items-center justify-between gap-2 sm:gap-3 mb-3 shrink-0">
+            <div className="flex items-center gap-2 flex-1 min-w-0">
+              <button
+                type="button"
+                onClick={handleSaveAndClose}
+                className="p-1.5 -ml-1 rounded-full text-slate-600 dark:text-[#A7EBF2] hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer shrink-0"
+                title="Back and save"
+                aria-label="Back"
+              >
+                <ArrowLeft className="w-5 h-5" />
+              </button>
+              <input
+                type="text"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="Title"
+                className="w-full min-w-0 bg-transparent font-semibold text-lg sm:text-xl text-[#011C40] dark:text-white placeholder-slate-400 dark:placeholder-[#A7EBF2]/50 focus:outline-none"
+              />
+            </div>
             <div className="flex items-center gap-1 shrink-0">
               {isLocked && (
                 <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 shrink-0">
@@ -528,7 +543,7 @@ function NoteEditModalContent({ note, onClose }: NoteEditModalContentProps) {
           )}
 
           {/* Scrollable Middle Content (Images, Voice, Text, Checklist, Labels) */}
-          <div className="flex-1 overflow-y-auto pr-1 sm:pr-2 space-y-3 min-h-0">
+          <div className="flex-1 overflow-y-auto overflow-x-hidden pr-1 sm:pr-2 space-y-3 min-h-0 w-full">
             {/* Attached images gallery */}
             {images.length > 0 && (
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pb-2">
@@ -824,8 +839,8 @@ function NoteEditModalContent({ note, onClose }: NoteEditModalContentProps) {
           </div>
 
           {/* Footer toolbar (Fixed at bottom) */}
-          <div className="flex items-center justify-between pt-3 mt-2 border-t border-black/5 dark:border-white/10 shrink-0">
-            <div className="flex items-center gap-1.5">
+          <div className="flex items-center justify-between gap-2 pt-3 mt-2 border-t border-black/5 dark:border-white/10 shrink-0">
+            <div className="flex items-center gap-1 sm:gap-1.5 overflow-x-auto no-scrollbar py-0.5">
               <ColorPicker currentColor={color} onSelectColor={setColor} />
 
               <ReminderPicker
@@ -838,10 +853,15 @@ function NoteEditModalContent({ note, onClose }: NoteEditModalContentProps) {
                 type="button"
                 onClick={() => setShowLabelInput((prev) => !prev)}
                 title="Add tag"
-                className="p-1.5 rounded-full text-slate-600 dark:text-[#A7EBF2]/80 hover:bg-[#A7EBF2]/20 dark:hover:bg-[#26658C]/50 transition-colors cursor-pointer"
+                className="p-1.5 rounded-full text-slate-600 dark:text-[#A7EBF2]/80 hover:bg-[#A7EBF2]/20 dark:hover:bg-[#26658C]/50 transition-colors cursor-pointer shrink-0"
               >
                 <Tag className="w-4 h-4" />
               </button>
+
+              {/* Google Keep style Text Formatting 'A' button (for text/rich notes) */}
+              {!isChecklistNote && (
+                <TextFormatPicker placement="top" align="left" />
+              )}
 
               {/* Add Image button - ONLY for image notes */}
               {noteType === 'image' && (
@@ -850,7 +870,7 @@ function NoteEditModalContent({ note, onClose }: NoteEditModalContentProps) {
                     type="button"
                     onClick={() => imageInputRef.current?.click()}
                     title="Attach image"
-                    className="p-1.5 rounded-full text-slate-600 dark:text-[#A7EBF2]/80 hover:bg-[#A7EBF2]/20 dark:hover:bg-[#26658C]/50 transition-colors cursor-pointer"
+                    className="p-1.5 rounded-full text-slate-600 dark:text-[#A7EBF2]/80 hover:bg-[#A7EBF2]/20 dark:hover:bg-[#26658C]/50 transition-colors cursor-pointer shrink-0"
                   >
                     <ImageIcon className="w-4 h-4" />
                   </button>
@@ -872,7 +892,7 @@ function NoteEditModalContent({ note, onClose }: NoteEditModalContentProps) {
                   onClick={() => setShowVoiceRecorder((prev) => !prev)}
                   title="Record voice note"
                   className={cn(
-                    'p-1.5 rounded-full transition-colors cursor-pointer',
+                    'p-1.5 rounded-full transition-colors cursor-pointer shrink-0',
                     showVoiceRecorder || audioUrl
                       ? 'text-[#011C40] bg-[#A7EBF2]'
                       : 'text-slate-600 dark:text-[#A7EBF2]/80 hover:bg-[#A7EBF2]/20 dark:hover:bg-[#26658C]/50'
@@ -889,7 +909,7 @@ function NoteEditModalContent({ note, onClose }: NoteEditModalContentProps) {
                     type="button"
                     onClick={handleLockNow}
                     title="Lock note now"
-                    className="p-1.5 rounded-full text-amber-500 bg-amber-100 dark:bg-amber-950/60 hover:bg-amber-200 dark:hover:bg-amber-900/80 transition-colors cursor-pointer"
+                    className="p-1.5 rounded-full text-amber-500 bg-amber-100 dark:bg-amber-950/60 hover:bg-amber-200 dark:hover:bg-amber-900/80 transition-colors cursor-pointer shrink-0"
                   >
                     <Lock className="w-4 h-4" />
                   </button>
@@ -897,7 +917,7 @@ function NoteEditModalContent({ note, onClose }: NoteEditModalContentProps) {
                     type="button"
                     onClick={() => setIsRemoveLockModalOpen(true)}
                     title="Remove password protection"
-                    className="p-1.5 rounded-full text-slate-500 dark:text-[#A7EBF2]/70 hover:bg-[#A7EBF2]/20 dark:hover:bg-[#26658C]/50 transition-colors cursor-pointer"
+                    className="p-1.5 rounded-full text-slate-500 dark:text-[#A7EBF2]/70 hover:bg-[#A7EBF2]/20 dark:hover:bg-[#26658C]/50 transition-colors cursor-pointer shrink-0"
                   >
                     <LockKeyhole className="w-4 h-4" />
                   </button>
@@ -907,7 +927,7 @@ function NoteEditModalContent({ note, onClose }: NoteEditModalContentProps) {
                   type="button"
                   onClick={() => setIsLockModalOpen(true)}
                   title="Lock note with password"
-                  className="p-1.5 rounded-full text-slate-600 dark:text-[#A7EBF2]/80 hover:bg-[#A7EBF2]/20 dark:hover:bg-[#26658C]/50 transition-colors cursor-pointer"
+                  className="p-1.5 rounded-full text-slate-600 dark:text-[#A7EBF2]/80 hover:bg-[#A7EBF2]/20 dark:hover:bg-[#26658C]/50 transition-colors cursor-pointer shrink-0"
                 >
                   <Lock className="w-4 h-4" />
                 </button>
@@ -921,7 +941,7 @@ function NoteEditModalContent({ note, onClose }: NoteEditModalContentProps) {
                     onClose();
                   }}
                   title="Unarchive"
-                  className="p-1.5 rounded-full text-slate-600 dark:text-[#A7EBF2]/80 hover:bg-[#A7EBF2]/20 dark:hover:bg-[#26658C]/50 transition-colors cursor-pointer"
+                  className="p-1.5 rounded-full text-slate-600 dark:text-[#A7EBF2]/80 hover:bg-[#A7EBF2]/20 dark:hover:bg-[#26658C]/50 transition-colors cursor-pointer shrink-0"
                 >
                   <ArchiveRestore className="w-4 h-4" />
                 </button>
@@ -930,7 +950,7 @@ function NoteEditModalContent({ note, onClose }: NoteEditModalContentProps) {
                   type="button"
                   onClick={() => setIsConfirmArchiveOpen(true)}
                   title="Archive"
-                  className="p-1.5 rounded-full text-slate-600 dark:text-[#A7EBF2]/80 hover:bg-[#A7EBF2]/20 dark:hover:bg-[#26658C]/50 transition-colors cursor-pointer"
+                  className="p-1.5 rounded-full text-slate-600 dark:text-[#A7EBF2]/80 hover:bg-[#A7EBF2]/20 dark:hover:bg-[#26658C]/50 transition-colors cursor-pointer shrink-0"
                 >
                   <Archive className="w-4 h-4" />
                 </button>
@@ -946,13 +966,13 @@ function NoteEditModalContent({ note, onClose }: NoteEditModalContentProps) {
                   }
                 }}
                 title="Delete note"
-                className="p-1.5 rounded-full text-slate-600 dark:text-[#A7EBF2]/80 hover:bg-rose-100 dark:hover:bg-rose-950/60 hover:text-rose-600 transition-colors cursor-pointer"
+                className="p-1.5 rounded-full text-slate-600 dark:text-[#A7EBF2]/80 hover:bg-rose-100 dark:hover:bg-rose-950/60 hover:text-rose-600 transition-colors cursor-pointer shrink-0"
               >
                 <Trash2 className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 sm:gap-3 shrink-0">
               {(() => {
                 const plainText = extractPlainText(content);
                 const words = plainText.trim() ? plainText.trim().split(/\s+/).length : 0;
@@ -970,7 +990,7 @@ function NoteEditModalContent({ note, onClose }: NoteEditModalContentProps) {
                 size="sm"
                 onClick={handleSaveAndClose}
                 disabled={isUploading}
-                className="px-6 font-semibold flex items-center gap-1.5"
+                className="px-4 sm:px-6 font-semibold flex items-center gap-1.5 shrink-0"
               >
                 {isUploading && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                 {isUploading ? 'Saving...' : 'Done'}

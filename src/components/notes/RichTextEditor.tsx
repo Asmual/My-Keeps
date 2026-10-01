@@ -26,6 +26,7 @@ interface RichTextEditorProps {
   isFullscreen?: boolean;
   minHeightClass?: string;
   showDictation?: boolean;
+  showTopToolbar?: boolean;
 }
 
 // Curated Vibrant Text Colors
@@ -60,6 +61,7 @@ export function RichTextEditor({
   isFullscreen = false,
   minHeightClass,
   showDictation = true,
+  showTopToolbar = false,
 }: RichTextEditorProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<HTMLDivElement>(null);
@@ -256,13 +258,11 @@ export function RichTextEditor({
 
   return (
     <div className="relative w-full" ref={containerRef}>
-      {/* ========================================================================= */}
-      {/* 1. TOP QUICK FORMAT TOOLBAR (Always accessible for fast formatting)       */}
-      {/* ========================================================================= */}
-      <div
-        className="flex items-center flex-wrap gap-1 pb-2 mb-2 border-b border-black/5 dark:border-white/10 text-xs text-[#011C40] dark:text-[#A7EBF2]"
-        onMouseDown={(e) => e.preventDefault()} // Keep focus inside editor
-      >
+      {showTopToolbar && (
+        <div
+          className="flex items-center flex-wrap gap-1 pb-2 mb-2 border-b border-black/5 dark:border-white/10 text-xs text-[#011C40] dark:text-[#A7EBF2]"
+          onMouseDown={(e) => e.preventDefault()} // Keep focus inside editor
+        >
         <button
           type="button"
           onClick={() => applyFormat('bold')}
@@ -516,6 +516,7 @@ export function RichTextEditor({
           <RemoveFormatting className="w-3.5 h-3.5" />
         </button>
       </div>
+      )}
 
       {/* ========================================================================= */}
       {/* 2. MINI FLOATING SELECTION BUBBLE TOOLBAR (Appears above selected text)   */}
