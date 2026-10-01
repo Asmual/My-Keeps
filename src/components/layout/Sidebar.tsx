@@ -18,6 +18,7 @@ import {
   Bell,
   X,
   Search,
+  ArrowLeft,
 } from 'lucide-react';
 import { useNotes } from '@/hooks/useNotes';
 import { cn } from '@/lib/utils';
@@ -115,17 +116,29 @@ export function Sidebar() {
       {/* ========================================================================= */}
       {/* 1. MOBILE SLIDE-OUT DRAWER (< sm: 640px)                                  */}
       {/* ========================================================================= */}
-      {sidebarOpen && (
-        <div className="fixed inset-0 z-50 sm:hidden">
-          {/* Backdrop overlay */}
-          <div
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-200"
-            onClick={() => setSidebarOpen(false)}
-            aria-hidden="true"
-          />
+      <div
+        className={cn(
+          'fixed inset-0 z-50 sm:hidden transition-all duration-500 ease-in-out',
+          sidebarOpen ? 'pointer-events-auto visible' : 'pointer-events-none invisible'
+        )}
+      >
+        {/* Backdrop overlay */}
+        <div
+          className={cn(
+            'fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-500 ease-in-out',
+            sidebarOpen ? 'opacity-100' : 'opacity-0'
+          )}
+          onClick={() => setSidebarOpen(false)}
+          aria-hidden="true"
+        />
 
-          {/* Drawer container */}
-          <aside className="relative flex flex-col justify-between w-72 max-w-[85vw] h-full bg-white dark:bg-[#011C40] p-4 shadow-2xl border-r border-[#A7EBF2]/40 dark:border-[#26658C] select-none animate-in slide-in-from-left duration-250">
+        {/* Drawer container */}
+        <aside
+          className={cn(
+            'relative flex flex-col justify-between w-72 max-w-[85vw] h-full bg-white dark:bg-[#011C40] p-4 shadow-2xl border-r border-[#A7EBF2]/40 dark:border-[#26658C] select-none transition-transform duration-500 ease-in-out transform',
+            sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+          )}
+        >
             {/* Top header with logo and close button */}
             <div className="flex items-center justify-between pb-3 border-b border-[#A7EBF2]/40 dark:border-[#26658C]">
               <div className="flex items-center gap-2.5">
@@ -143,10 +156,11 @@ export function Sidebar() {
               <button
                 type="button"
                 onClick={() => setSidebarOpen(false)}
-                className="p-1.5 rounded-full text-slate-500 hover:text-[#011C40] dark:text-[#A7EBF2] dark:hover:text-white hover:bg-[#A7EBF2]/20 dark:hover:bg-[#023859] transition-colors"
-                aria-label="Close navigation drawer"
+                className="p-1.5 rounded-full text-slate-500 hover:text-[#011C40] dark:text-[#A7EBF2] dark:hover:text-white hover:bg-[#A7EBF2]/20 dark:hover:bg-[#023859] transition-colors cursor-pointer"
+                aria-label="Back to main view"
+                title="Close menu"
               >
-                <X className="w-5 h-5" />
+                <ArrowLeft className="w-5 h-5 text-[#54ACBF] hover:text-[#011C40] dark:hover:text-white transition-colors" />
               </button>
             </div>
 
@@ -274,14 +288,13 @@ export function Sidebar() {
             </div>
           </aside>
         </div>
-      )}
 
       {/* ========================================================================= */}
       {/* 2. DESKTOP STICKY SIDEBAR (>= sm: 640px)                                  */}
       {/* ========================================================================= */}
       <aside
         className={cn(
-          'hidden sm:flex sticky top-16 h-[calc(100vh-4rem)] flex-col justify-between py-4 transition-all duration-250 ease-out select-none border-r border-[#A7EBF2]/40 dark:border-[#26658C] bg-white/60 dark:bg-[#011C40] backdrop-blur-sm z-20',
+          'hidden sm:flex sticky top-16 h-[calc(100vh-4rem)] flex-col justify-between py-4 transition-all duration-500 ease-in-out select-none border-r border-[#A7EBF2]/40 dark:border-[#26658C] bg-white/60 dark:bg-[#011C40] backdrop-blur-sm z-20',
           sidebarOpen ? 'w-64 px-3' : 'w-18 px-2'
         )}
       >

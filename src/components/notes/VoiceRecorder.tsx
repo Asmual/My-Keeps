@@ -97,17 +97,33 @@ export function VoiceRecorder({
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       audioChunksRef.current = [];
 
-      const mediaRecorder = new MediaRecorder(stream);
+      // Determine best supported audio mime type
+      let selectedMimeType = '';
+      if (typeof MediaRecorder !== 'undefined') {
+        if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
+          selectedMimeType = 'audio/webm;codecs=opus';
+        } else if (MediaRecorder.isTypeSupported('audio/webm')) {
+          selectedMimeType = 'audio/webm';
+        } else if (MediaRecorder.isTypeSupported('audio/mp4')) {
+          selectedMimeType = 'audio/mp4';
+        }
+      }
+
+      const mediaRecorder = selectedMimeType
+        ? new MediaRecorder(stream, { mimeType: selectedMimeType })
+        : new MediaRecorder(stream);
       mediaRecorderRef.current = mediaRecorder;
 
       mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
+        if (event.data && event.data.size > 0) {
           audioChunksRef.current.push(event.data);
         }
       };
 
       mediaRecorder.onstop = () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        const audioBlob = new Blob(audioChunksRef.current, {
+          type: selectedMimeType || 'audio/webm',
+        });
         const reader = new FileReader();
         reader.onloadend = () => {
           if (typeof reader.result === 'string') {
@@ -120,14 +136,19 @@ export function VoiceRecorder({
         stream.getTracks().forEach((track) => track.stop());
       };
 
-      mediaRecorder.start();
+      // timeslice of 500ms ensures periodic data push
+      mediaRecorder.start(500);
       setIsRecording(true);
       setRecordingTime(0);
       setShowTranscriptBox(false);
 
       // Start capturing speech in background
       if (isSpeechSupported) {
-        startListening();
+        try {
+          startListening();
+        } catch (e) {
+          console.warn('Live speech recognition warning:', e);
+        }
       }
 
       timerRef.current = setInterval(() => {

@@ -329,15 +329,16 @@ export function NoteCard({ note, isTrashView = false }: NoteCardProps) {
                       {uncompletedItems.slice(0, 6).map((item) => (
                         <div
                           key={item.id}
-                          onClick={(e) => handleToggleCheckItem(e, item.id)}
-                          className="flex items-center gap-2.5 py-1 px-1.5 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 cursor-pointer transition-colors group/item"
-                          title="Click to complete"
+                          className="flex items-center gap-2.5 py-1 px-1.5 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 transition-colors group/item"
                         >
                           {/* Google Keep style custom checkbox */}
                           <button
                             type="button"
-                            onClick={(e) => handleToggleCheckItem(e, item.id)}
-                            className="w-4 h-4 sm:w-5 sm:h-5 rounded-md border-2 border-slate-400 dark:border-[#54ACBF] group-hover/item:border-[#023859] dark:group-hover/item:border-white transition-colors flex items-center justify-center shrink-0 bg-white/40 dark:bg-black/20"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleToggleCheckItem(e, item.id);
+                            }}
+                            className="w-4 h-4 sm:w-5 sm:h-5 rounded-md border-2 border-slate-400 dark:border-[#54ACBF] group-hover/item:border-[#023859] dark:group-hover/item:border-white transition-colors flex items-center justify-center shrink-0 bg-white/40 dark:bg-black/20 cursor-pointer"
                             title="Mark completed"
                           />
                           <span className="text-sm sm:text-base text-slate-800 dark:text-slate-100 truncate flex-1 select-none font-normal">
@@ -380,14 +381,15 @@ export function NoteCard({ note, isTrashView = false }: NoteCardProps) {
                           {completedItems.map((item) => (
                             <div
                               key={item.id}
-                              onClick={(e) => handleToggleCheckItem(e, item.id)}
-                              className="flex items-center gap-2.5 py-0.5 px-1.5 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 cursor-pointer transition-colors group/item"
-                              title="Click to restore to uncompleted"
+                              className="flex items-center gap-2.5 py-0.5 px-1.5 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 transition-colors group/item"
                             >
                               <button
                                 type="button"
-                                onClick={(e) => handleToggleCheckItem(e, item.id)}
-                                className="w-4 h-4 sm:w-5 sm:h-5 rounded-md bg-[#023859] dark:bg-[#54ACBF] border-2 border-[#023859] dark:border-[#54ACBF] flex items-center justify-center text-white dark:text-[#011C40] shrink-0 shadow-xs"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleToggleCheckItem(e, item.id);
+                                }}
+                                className="w-4 h-4 sm:w-5 sm:h-5 rounded-md bg-[#023859] dark:bg-[#54ACBF] border-2 border-[#023859] dark:border-[#54ACBF] flex items-center justify-center text-white dark:text-[#011C40] shrink-0 shadow-xs cursor-pointer"
                                 title="Mark uncompleted"
                               >
                                 <Check className="w-3 h-3 sm:w-3.5 sm:h-3.5 stroke-[3]" />

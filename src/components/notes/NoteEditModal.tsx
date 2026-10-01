@@ -144,6 +144,23 @@ function NoteEditModalContent({ note, onClose }: NoteEditModalContentProps) {
       ? 'checklist'
       : 'text');
 
+  const isChecklistNote =
+    noteType === 'checklist' || (checklist && checklist.length > 0);
+  const [focusItemId, setFocusItemId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (focusItemId) {
+      const el = document.getElementById(
+        `modal-check-item-${focusItemId}`
+      ) as HTMLInputElement | null;
+      if (el) {
+        el.focus();
+        el.select();
+      }
+      setFocusItemId(null);
+    }
+  }, [focusItemId, checklist]);
+
   const handleSaveAndClose = useCallback(() => {
     if (audioPreviewRef.current) {
       audioPreviewRef.current.pause();
@@ -311,11 +328,50 @@ function NoteEditModalContent({ note, onClose }: NoteEditModalContentProps) {
     if (!newCheckItem.trim()) return;
     if (e) e.preventDefault();
 
-    setChecklist((prev) => [
-      ...prev,
-      { id: generateId(), text: newCheckItem.trim(), completed: false },
-    ]);
+    setChecklist((prev) => {
+      const uncompleted = prev.filter((c) => !c.completed);
+      const completed = prev.filter((c) => c.completed);
+      return [
+        ...uncompleted,
+        { id: generateId(), text: newCheckItem.trim(), completed: false },
+        ...completed,
+      ];
+    });
     setNewCheckItem('');
+  };
+
+  const handleItemKeyDown = (
+    e: React.KeyboardEvent<HTMLInputElement>,
+    idx: number,
+    item: { id: string; text: string }
+  ) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const newId = generateId();
+      const newItem = { id: newId, text: '', completed: false };
+
+      setChecklist((prev) => {
+        const uncompleted = prev.filter((c) => !c.completed);
+        const completed = prev.filter((c) => c.completed);
+
+        const nextUncompleted = [...uncompleted];
+        nextUncompleted.splice(idx + 1, 0, newItem);
+        return [...nextUncompleted, ...completed];
+      });
+
+      setFocusItemId(newId);
+    } else if (e.key === 'Backspace' && item.text === '') {
+      e.preventDefault();
+      setChecklist((prev) => prev.filter((c) => c.id !== item.id));
+
+      const uncompleted = checklist.filter((c) => !c.completed);
+      if (idx > 0 && uncompleted[idx - 1]) {
+        setFocusItemId(uncompleted[idx - 1].id);
+      } else {
+        const nextInput = document.getElementById('modal-new-check-item');
+        if (nextInput) nextInput.focus();
+      }
+    }
   };
 
   const handleChecklistDragStart = (e: React.DragEvent, index: number) => {
@@ -571,17 +627,19 @@ function NoteEditModalContent({ note, onClose }: NoteEditModalContentProps) {
               </div>
             ) : null}
             {/* Content text (Rich Text Editor with Floating Bubble Bar & Headings/Colors) */}
-            <RichTextEditor
-              value={content}
-              onChange={setContent}
-              placeholder="Note details..."
-              isFullscreen={isFullscreen}
-              showDictation={true}
-            />
+            {!isChecklistNote && (
+              <RichTextEditor
+                value={content}
+                onChange={setContent}
+                placeholder="Note details..."
+                isFullscreen={isFullscreen}
+                showDictation={true}
+              />
+            )}
 
-            {/* Checklist */}
-            {checklist.length > 0 && (
-              <div className="space-y-2 border-t border-black/5 dark:border-white/10 pt-3">
+            {/* Checklist: rendered directly under Title for checklist notes */}
+            {isChecklistNote && (
+              <div className="space-y-2 pt-1">
                 {/* Active Uncompleted Checklist Items */}
                 <div className="space-y-1">
                   {checklist
@@ -616,6 +674,7 @@ function NoteEditModalContent({ note, onClose }: NoteEditModalContentProps) {
 
                         {/* Checklist Item Text (Larger, readable font) */}
                         <input
+                          id={`modal-check-item-${item.id}`}
                           type="text"
                           value={item.text}
                           onChange={(e) => {
@@ -624,16 +683,8 @@ function NoteEditModalContent({ note, onClose }: NoteEditModalContentProps) {
                               prev.map((c) => (c.id === item.id ? { ...c, text: val } : c))
                             );
                           }}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') {
-                              e.preventDefault();
-                              const nextInput = document.getElementById('modal-new-check-item');
-                              if (nextInput) nextInput.focus();
-                            } else if (e.key === 'Backspace' && item.text === '') {
-                              e.preventDefault();
-                              setChecklist((prev) => prev.filter((c) => c.id !== item.id));
-                            }
-                          }}
+                          onKeyDown={(e) => handleItemKeyDown(e, idx, item)}
+                          placeholder="List item..."
                           className="flex-1 min-w-0 text-sm sm:text-base font-normal bg-transparent border-b border-transparent hover:border-slate-300 dark:hover:border-slate-600 focus:border-[#54ACBF] focus:outline-none transition-colors text-[#011C40] dark:text-white py-0.5"
                         />
 

@@ -14,7 +14,7 @@ export type SpeechLanguage = 'bn-BD' | 'en-US';
 interface UseSpeechRecognitionOptions {
   language?: SpeechLanguage;
   continuous?: boolean;
-  onResult?: (text: string) => void;
+  onResult?: (newChunk: string, fullTranscript: string) => void;
 }
 
 export function useSpeechRecognition({
@@ -29,6 +29,7 @@ export function useSpeechRecognition({
   const [isSupported, setIsSupported] = useState(true);
 
   const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
+  const isIntentionallyListeningRef = useRef(false);
   const onResultRef = useRef(onResult);
   onResultRef.current = onResult;
 
@@ -63,22 +64,23 @@ export function useSpeechRecognition({
 
     recognition.onresult = (event: SpeechRecognitionEvent) => {
       let interim = '';
-      let final = '';
+      let finalChunk = '';
 
       for (let i = event.resultIndex; i < event.results.length; ++i) {
         const resultItem = event.results[i];
         if (resultItem.isFinal) {
-          final += resultItem[0].transcript + ' ';
+          finalChunk += resultItem[0].transcript + ' ';
         } else {
           interim += resultItem[0].transcript;
         }
       }
 
-      if (final) {
+      if (finalChunk.trim()) {
+        const trimmedChunk = finalChunk.trim();
         setTranscript((prev) => {
-          const updated = (prev + ' ' + final).trim();
+          const updated = (prev ? prev + ' ' : '') + trimmedChunk;
           if (onResultRef.current) {
-            onResultRef.current(updated);
+            onResultRef.current(trimmedChunk, updated);
           }
           return updated;
         });
@@ -88,16 +90,36 @@ export function useSpeechRecognition({
     };
 
     recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
-      // Ignore 'no-speech' or 'aborted' as routine events
       if (event.error === 'not-allowed') {
+        isIntentionallyListeningRef.current = false;
         toast.error('Microphone permission was denied. Please allow mic access.');
         setIsListening(false);
-      } else if (event.error !== 'no-speech' && event.error !== 'aborted') {
+      } else if (event.error === 'no-speech') {
+        // Chromium stops on silence/pauses - isIntentionallyListeningRef will auto-restart it
+      } else if (event.error !== 'aborted') {
         console.warn('Speech recognition event warning:', event.error);
       }
     };
 
     recognition.onend = () => {
+      // If user still wants to listen, auto-restart so silence/pauses don't terminate listening
+      if (isIntentionallyListeningRef.current) {
+        try {
+          recognition.start();
+          return;
+        } catch {
+          setTimeout(() => {
+            if (isIntentionallyListeningRef.current) {
+              try {
+                recognition.start();
+              } catch {
+                // Ignore transient restart errors
+              }
+            }
+          }, 300);
+          return;
+        }
+      }
       setIsListening(false);
       setInterimTranscript('');
     };
@@ -114,8 +136,13 @@ export function useSpeechRecognition({
     }
 
     try {
+      isIntentionallyListeningRef.current = true;
       if (recognitionRef.current) {
-        recognitionRef.current.abort();
+        try {
+          recognitionRef.current.abort();
+        } catch {
+          // ignore
+        }
       }
 
       const instance = initRecognition();
@@ -126,10 +153,13 @@ export function useSpeechRecognition({
       }
     } catch (error) {
       console.error('Failed to start speech recognition:', error);
+      isIntentionallyListeningRef.current = false;
+      setIsListening(false);
     }
   }, [initRecognition, isSupported]);
 
   const stopListening = useCallback(() => {
+    isIntentionallyListeningRef.current = false;
     try {
       if (recognitionRef.current) {
         recognitionRef.current.stop();
