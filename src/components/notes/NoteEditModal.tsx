@@ -618,7 +618,7 @@ function NoteEditModalContent({ note, onClose }: NoteEditModalContentProps) {
                   <button
                     type="button"
                     onClick={togglePlayAudio}
-                    className="p-1.5 rounded-full bg-[#54ACBF] text-white hover:bg-[#26658C] transition-colors cursor-pointer"
+                    className="p-1.5 rounded-full bg-[#54ACBF] text-white hover:bg-[#26658C] transition-colors cursor-pointer shrink-0"
                     title={isPlayingAudio ? 'Pause' : 'Play voice memo'}
                   >
                     {isPlayingAudio ? (
@@ -627,19 +627,29 @@ function NoteEditModalContent({ note, onClose }: NoteEditModalContentProps) {
                       <Play className="w-3 h-3 fill-current ml-0.5" />
                     )}
                   </button>
-                  <span className="flex items-center gap-1.5">
-                    <Mic className="w-3.5 h-3.5 text-[#54ACBF]" />
-                    {isPlayingAudio ? 'Playing voice note...' : 'Voice memo attached'}
+                  <span className="flex items-center gap-1.5 truncate">
+                    <Mic className="w-3.5 h-3.5 text-[#54ACBF] shrink-0" />
+                    <span>{isPlayingAudio ? 'Playing voice note...' : 'Voice memo attached'}</span>
                   </span>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setIsConfirmDeleteAudioOpen(true)}
-                  className="p-1 text-rose-500 hover:bg-rose-100 dark:hover:bg-rose-950/60 rounded-md transition-colors cursor-pointer"
-                  title="Remove voice note"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setShowVoiceRecorder(true)}
+                    className="text-xs px-2.5 py-1 rounded-lg text-[#023859] dark:text-[#A7EBF2] bg-[#A7EBF2]/30 dark:bg-[#023859] hover:bg-[#A7EBF2]/50 font-medium cursor-pointer transition-colors"
+                    title="Convert audio to text or re-record"
+                  >
+                    Convert / Edit
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsConfirmDeleteAudioOpen(true)}
+                    className="p-1 text-rose-500 hover:bg-rose-100 dark:hover:bg-rose-950/60 rounded-md transition-colors cursor-pointer"
+                    title="Remove voice note"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
               </div>
             ) : null}
             {/* Content text (Rich Text Editor with Floating Bubble Bar & Headings/Colors) */}

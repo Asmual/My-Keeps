@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { Bell, Clock, Calendar, X, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import toast from 'react-hot-toast';
@@ -8,6 +9,7 @@ import toast from 'react-hot-toast';
 interface ReminderPickerProps {
   currentReminder?: string | null;
   onSelectReminder: (reminderIso: string | null) => void;
+  className?: string;
   buttonClassName?: string;
   iconClassName?: string;
   align?: 'left' | 'right';
@@ -17,6 +19,7 @@ interface ReminderPickerProps {
 export function ReminderPicker({
   currentReminder,
   onSelectReminder,
+  className,
   buttonClassName,
   iconClassName = 'w-3.5 h-3.5',
   align = 'left',
@@ -25,23 +28,86 @@ export function ReminderPicker({
   const [isOpen, setIsOpen] = useState(false);
   const [isCustomMode, setIsCustomMode] = useState(false);
   const [customDateTime, setCustomDateTime] = useState('');
+  const [mounted, setMounted] = useState(false);
+  const [coords, setCoords] = useState<{ top: number; left: number } | null>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
 
-  // Close on outside click
   useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const updatePosition = useCallback(() => {
+    if (!buttonRef.current) return;
+    const rect = buttonRef.current.getBoundingClientRect();
+    const popoverWidth = 260;
+    const popoverHeight = isCustomMode ? 280 : 250;
+
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const spaceAbove = rect.top;
+
+    let showBelow = true;
+    if (placement === 'top') {
+      showBelow = spaceAbove < popoverHeight + 10 && spaceBelow >= spaceAbove;
+    } else {
+      showBelow = spaceBelow >= popoverHeight + 10 || spaceBelow >= spaceAbove;
+    }
+
+    const top = showBelow
+      ? Math.min(rect.bottom + 6, window.innerHeight - popoverHeight - 12)
+      : Math.max(12, rect.top - popoverHeight - 6);
+
+    let left = rect.left;
+    if (align === 'right') {
+      left = rect.right - popoverWidth;
+    }
+    // Strict screen bounds clamping
+    if (left + popoverWidth > window.innerWidth - 12) {
+      left = window.innerWidth - popoverWidth - 12;
+    }
+    if (left < 12) {
+      left = 12;
+    }
+
+    setCoords({ top, left });
+  }, [align, placement, isCustomMode]);
+
+  // Close on outside click, window resize or scroll
+  useEffect(() => {
+    if (!isOpen) return;
+    updatePosition();
+
     function handleClickOutside(e: MouseEvent) {
-      if (popoverRef.current && !popoverRef.current.contains(e.target as Node)) {
+      if (
+        popoverRef.current &&
+        !popoverRef.current.contains(e.target as Node) &&
+        buttonRef.current &&
+        !buttonRef.current.contains(e.target as Node)
+      ) {
         setIsOpen(false);
         setIsCustomMode(false);
       }
     }
-    if (isOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
+
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') {
+        setIsOpen(false);
+        setIsCustomMode(false);
+      }
     }
+
+    document.addEventListener('mousedown', handleClickOutside);
+    window.addEventListener('scroll', updatePosition, true);
+    window.addEventListener('resize', updatePosition);
+    document.addEventListener('keydown', handleKeyDown);
+
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
+      window.removeEventListener('scroll', updatePosition, true);
+      window.removeEventListener('resize', updatePosition);
+      document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [isOpen]);
+  }, [isOpen, updatePosition]);
 
   // Request browser notification permission if not asked yet
   const requestNotificationPermission = () => {
@@ -114,8 +180,9 @@ export function ReminderPicker({
   const hasReminder = Boolean(currentReminder);
 
   return (
-    <div className={cn('relative inline-block', isOpen && 'z-50')} ref={popoverRef}>
+    <div className={cn('relative inline-block', className)}>
       <button
+        ref={buttonRef}
         type="button"
         onClick={(e) => {
           e.stopPropagation();
@@ -123,7 +190,7 @@ export function ReminderPicker({
           setIsCustomMode(false);
         }}
         className={cn(
-          'p-1.5 rounded-full transition-colors cursor-pointer relative',
+          'p-1.5 rounded-full transition-colors cursor-pointer relative shrink-0',
           hasReminder
             ? 'text-amber-500 bg-amber-100 dark:bg-amber-950/60 hover:bg-amber-200'
             : 'text-slate-600 dark:text-[#A7EBF2]/80 hover:bg-[#A7EBF2]/20 dark:hover:bg-[#26658C]/50',
@@ -135,20 +202,25 @@ export function ReminderPicker({
         <Bell className={cn(iconClassName, hasReminder && 'fill-current')} />
       </button>
 
-      {isOpen && (
-        <div
-          onClick={(e) => e.stopPropagation()}
-          className={cn(
-            'absolute z-[60] w-64 max-w-[calc(100vw-2rem)] rounded-2xl bg-white dark:bg-[#011C40] border border-[#A7EBF2] dark:border-[#26658C] shadow-2xl p-2.5 text-xs text-[#011C40] dark:text-slate-200 animate-in fade-in zoom-in-95 duration-150',
-            placement === 'bottom' ? 'top-full mt-2' : 'bottom-full mb-2',
-            align === 'left' ? 'left-0' : 'right-0'
-          )}
-        >
-          <div className="flex items-center justify-between pb-2 mb-2 border-b border-[#A7EBF2]/40 dark:border-[#26658C]">
-            <span className="font-semibold text-xs text-[#011C40] dark:text-white flex items-center gap-1.5">
-              <Bell className="w-3.5 h-3.5 text-[#54ACBF]" />
-              Remind me
-            </span>
+      {isOpen &&
+        mounted &&
+        coords &&
+        createPortal(
+          <div
+            ref={popoverRef}
+            style={{
+              position: 'fixed',
+              top: `${coords.top}px`,
+              left: `${coords.left}px`,
+            }}
+            onClick={(e) => e.stopPropagation()}
+            className="z-[9999] w-64 max-w-[calc(100vw-24px)] rounded-2xl bg-white dark:bg-[#011C40] border border-[#A7EBF2] dark:border-[#26658C] shadow-2xl p-2.5 text-xs text-[#011C40] dark:text-slate-200 animate-in fade-in zoom-in-95 duration-150"
+          >
+            <div className="flex items-center justify-between pb-2 mb-2 border-b border-[#A7EBF2]/40 dark:border-[#26658C]">
+              <span className="font-semibold text-xs text-[#011C40] dark:text-white flex items-center gap-1.5">
+                <Bell className="w-3.5 h-3.5 text-[#54ACBF]" />
+                Remind me
+              </span>
             {hasReminder && (
               <button
                 type="button"
@@ -250,7 +322,8 @@ export function ReminderPicker({
               </div>
             </form>
           )}
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Bold,
   Italic,
@@ -49,22 +50,82 @@ export function TextFormatPicker({
 }: TextFormatPickerProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'style' | 'color'>('style');
+  const [mounted, setMounted] = useState(false);
+  const [coords, setCoords] = useState<{ top: number; left: number } | null>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
 
-  // Close on outside click
   useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const updatePosition = useCallback(() => {
+    if (!buttonRef.current) return;
+    const rect = buttonRef.current.getBoundingClientRect();
+    const popoverWidth = 270;
+    const popoverHeight = 240;
+
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const spaceAbove = rect.top;
+
+    let showBelow = false;
+    if (placement === 'bottom') {
+      showBelow = spaceBelow >= popoverHeight + 10 || spaceBelow >= spaceAbove;
+    } else {
+      showBelow = spaceAbove < popoverHeight + 10 && spaceBelow >= spaceAbove;
+    }
+
+    const top = showBelow
+      ? Math.min(rect.bottom + 6, window.innerHeight - popoverHeight - 12)
+      : Math.max(12, rect.top - popoverHeight - 6);
+
+    let left = rect.left;
+    if (align === 'right') {
+      left = rect.right - popoverWidth;
+    }
+    // Strict screen bounds clamping
+    if (left + popoverWidth > window.innerWidth - 12) {
+      left = window.innerWidth - popoverWidth - 12;
+    }
+    if (left < 12) {
+      left = 12;
+    }
+
+    setCoords({ top, left });
+  }, [align, placement]);
+
+  // Close on outside click, window resize or scroll
+  useEffect(() => {
+    if (!isOpen) return;
+    updatePosition();
+
     function handleClickOutside(event: MouseEvent) {
-      if (popoverRef.current && !popoverRef.current.contains(event.target as Node)) {
+      if (
+        popoverRef.current &&
+        !popoverRef.current.contains(event.target as Node) &&
+        buttonRef.current &&
+        !buttonRef.current.contains(event.target as Node)
+      ) {
         setIsOpen(false);
       }
     }
-    if (isOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
+
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') setIsOpen(false);
     }
+
+    document.addEventListener('mousedown', handleClickOutside);
+    window.addEventListener('scroll', updatePosition, true);
+    window.addEventListener('resize', updatePosition);
+    document.addEventListener('keydown', handleKeyDown);
+
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
+      window.removeEventListener('scroll', updatePosition, true);
+      window.removeEventListener('resize', updatePosition);
+      document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [isOpen]);
+  }, [isOpen, updatePosition]);
 
   const triggerInputEvent = () => {
     const el = document.querySelector('[contenteditable="true"]');
@@ -92,9 +153,10 @@ export function TextFormatPicker({
   };
 
   return (
-    <div className={cn('relative inline-block', isOpen && 'z-50', className)} ref={popoverRef}>
+    <div className={cn('relative inline-block', className)}>
       {/* Google Keep 'A' with underline button */}
       <button
+        ref={buttonRef}
         type="button"
         title="Text formatting"
         aria-label="Text formatting options"
@@ -103,7 +165,7 @@ export function TextFormatPicker({
           setIsOpen((prev) => !prev);
         }}
         className={cn(
-          'p-1.5 rounded-full text-slate-600 dark:text-[#A7EBF2]/80 hover:bg-[#A7EBF2]/20 dark:hover:bg-[#26658C]/50 transition-colors cursor-pointer flex items-center justify-center',
+          'p-1.5 rounded-full text-slate-600 dark:text-[#A7EBF2]/80 hover:bg-[#A7EBF2]/20 dark:hover:bg-[#26658C]/50 transition-colors cursor-pointer flex items-center justify-center shrink-0',
           isOpen && 'bg-[#54ACBF] text-white dark:bg-[#54ACBF] dark:text-[#011C40] shadow-xs',
           buttonClassName
         )}
@@ -113,15 +175,21 @@ export function TextFormatPicker({
         </span>
       </button>
 
-      {isOpen && (
-        <div
-          onClick={(e) => e.stopPropagation()}
-          className={cn(
-            'absolute z-[70] p-2.5 bg-white dark:bg-[#023859] rounded-2xl shadow-2xl border border-[#A7EBF2] dark:border-[#26658C] w-[270px] max-w-[calc(100vw-1.5rem)] animate-in fade-in zoom-in-95 duration-150 select-none text-xs',
-            placement === 'top' ? 'bottom-full mb-2' : 'top-full mt-2',
-            align === 'left' ? 'left-0' : 'right-0'
-          )}
-        >
+      {isOpen &&
+        mounted &&
+        coords &&
+        createPortal(
+          <div
+            ref={popoverRef}
+            style={{
+              position: 'fixed',
+              top: `${coords.top}px`,
+              left: `${coords.left}px`,
+            }}
+            onClick={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.preventDefault()}
+            className="z-[9999] p-2.5 bg-white dark:bg-[#023859] rounded-2xl shadow-2xl border border-[#A7EBF2] dark:border-[#26658C] w-[270px] max-w-[calc(100vw-24px)] animate-in fade-in zoom-in-95 duration-150 select-none text-xs"
+          >
           {/* Header tabs: Styles vs Colors */}
           <div className="flex items-center justify-between pb-2 mb-2 border-b border-black/5 dark:border-white/10">
             <div className="flex items-center gap-1 bg-slate-100 dark:bg-[#011C40] p-0.5 rounded-xl">
@@ -305,7 +373,8 @@ export function TextFormatPicker({
               </div>
             </div>
           )}
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

@@ -61,7 +61,7 @@ export function RichTextEditor({
   isFullscreen = false,
   minHeightClass,
   showDictation = true,
-  showTopToolbar = false,
+  showTopToolbar = true,
 }: RichTextEditorProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<HTMLDivElement>(null);
