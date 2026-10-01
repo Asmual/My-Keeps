@@ -76,6 +76,9 @@ export async function getServerSession(): Promise<AuthSession | null> {
 
     return null;
   } catch (err) {
+    if ((err as { digest?: string })?.digest === 'DYNAMIC_SERVER_USAGE') {
+      throw err;
+    }
     console.error('[Session] Error fetching server session:', err);
     return null;
   }

@@ -41,7 +41,7 @@ interface NotesContextType {
   selectAll: (ids?: string[]) => void;
   clearSelection: () => void;
   isAuthenticated: boolean;
-  currentUser: { id: string; email: string; name?: string } | null;
+  currentUser: { id: string; email: string; name?: string | null } | null;
   requireAuth: (actionName?: string) => boolean;
   isAuthModalOpen: boolean;
   openAuthModal: (actionName?: string) => void;
@@ -202,6 +202,8 @@ export function NotesProvider({
         setNotes([]);
         setIsLoading(false);
         return;
+      }
+
       // Prevent skeleton flash if notes are already pre-rendered by SSR/Redis
       if (!initialNotes || initialNotes.length === 0) {
         setIsLoading(true);
