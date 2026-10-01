@@ -5,28 +5,18 @@ import { useNotes } from '@/hooks/useNotes';
 import { CreateNoteBar } from '@/components/notes/CreateNoteBar';
 import { NoteGrid } from '@/components/notes/NoteGrid';
 
-export default function NotesPage() {
+export default function AllNotesPage() {
   const { notes } = useNotes();
 
-  // Strictly Text Notes: neither archived nor trashed, not image, voice, or checklist
-  const textNotes = notes.filter(
-    (n) =>
-      !n.isArchived &&
-      !n.isTrashed &&
-      n.noteType !== 'image' &&
-      n.noteType !== 'voice' &&
-      n.noteType !== 'checklist' &&
-      (!n.images || n.images.length === 0) &&
-      !n.audioUrl &&
-      (!n.checklist || n.checklist.length === 0)
-  );
+  // All active notes: neither archived nor trashed (all formats: text, voice, checklist, images)
+  const allNotes = notes.filter((n) => !n.isArchived && !n.isTrashed);
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
       {/* Google Keep-inspired Create Note Box */}
-      <CreateNoteBar defaultNoteType="text" />
+      <CreateNoteBar />
 
-      <NoteGrid notes={textNotes} emptyType="notes" />
+      <NoteGrid notes={allNotes} emptyType="notes" />
     </div>
   );
 }
