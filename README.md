@@ -9,6 +9,7 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0-3178C6?style=for-the-badge&logo=typescript)](https://www.typescriptlang.org/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-3.4-38B2AC?style=for-the-badge&logo=tailwind-css)](https://tailwindcss.com/)
 [![MongoDB](https://img.shields.io/badge/MongoDB-Atlas-47A248?style=for-the-badge&logo=mongodb)](https://www.mongodb.com/)
+[![Redis](https://img.shields.io/badge/Redis-Cloud-DC382D?style=for-the-badge&logo=redis&logoColor=white)](https://redis.io/)
 [![Vercel](https://img.shields.io/badge/Deployed-Vercel-black?style=for-the-badge&logo=vercel)](https://my-keeps-pink.vercel.app)
 
 <br />
@@ -28,11 +29,17 @@
 
 ## 🌟 Overview
 
-**My Keeps** is a high-performance, responsive, full-featured web application inspired by Google Keep, designed with modern web technologies and elevated by the proprietary **Luna Design System**. Built with **Next.js 16 (Turbopack)**, **TypeScript**, **Tailwind CSS**, **Better Auth**, and **MongoDB Atlas**, it combines sleek aesthetics with enterprise-grade data isolation, password-protected note locks, interactive checklists, multimedia attachments, and real-time synchronization.
+**My Keeps** is a high-performance, responsive, full-featured web application inspired by Google Keep, designed with modern web technologies and elevated by the proprietary **Luna Design System**. Built with **Next.js 16 (Turbopack)**, **TypeScript**, **Tailwind CSS**, **Better Auth**, **MongoDB Atlas**, and **Redis Cloud**, it combines sleek aesthetics with enterprise-grade data isolation, password-protected note locks, interactive checklists, multimedia attachments, real-time synchronization, and **sub-millisecond cache-aside data retrieval**.
 
 ---
 
 ## 🚀 Key Features
+
+### ⚡ Redis Cloud In-Memory Caching & Zero Auth Flicker (SSR)
+- **High-Velocity Cache-Aside Architecture**: Integrates **Redis Cloud** (`ioredis`) for sub-millisecond response times on note queries (`notes:${userId}:${filter}`) and user profiles. Reduces MongoDB load and yields instantaneous page renders.
+- **Instant Mutation Invalidation**: Whenever a note is created, updated, pinned, color-coded, locked, or deleted, user-specific Redis cache keys are instantly invalidated (`invalidateUserNotesCache`), guaranteeing 100% data consistency.
+- **Zero Auth Flicker**: Server-side session verification and pre-hydration eliminate client-side auth delay. The user avatar and dashboard render synchronously on first paint during SSR, preventing "Sign In" button flashes and skeleton loader jumps.
+- **Pre-Cached SSR Hydration**: Note state is pre-populated directly within Server Components (`getServerNotes`), providing instant First Contentful Paint (FCP) and zero Cumulative Layout Shift (CLS).
 
 ### 👤 Account Isolation & Multi-Tenant Security
 - **Strict Account Isolation**: Every note, checklist, and audio attachment is strictly tied to the authenticated user's account (`userId`). Unauthenticated visitors and guest sessions cannot view, mutate, or leak another user's notes.
@@ -74,6 +81,7 @@
 | **Styling** | **Tailwind CSS 3.4** | Utility-first CSS, custom Luna color system, dark mode variants |
 | **Authentication** | **Better Auth** | Session management, MongoDB adapter, Google OAuth & email auth |
 | **Database** | **MongoDB Atlas & Mongoose** | Cloud NoSQL database with atomic document schemas and indexing |
+| **In-Memory Cache** | **Redis Cloud & ioredis** | High-velocity Cache-Aside queries, session caching, and sub-millisecond retrieval |
 | **Icons & UI** | **Lucide React** | Clean, lightweight SVG icon suite |
 | **Notifications** | **React Hot Toast** | Minimalist, non-intrusive toast notifications |
 | **Backend REST API** | **Express.js & TypeScript** | Standalone microservice deployed on Render (`my-keeps-backend`) |
@@ -93,23 +101,25 @@ my-keeps-frontend/
 │   │   ├── (dashboard)/      # Dashboard pages (Notes, Checklists, Archive, Trash, etc.)
 │   │   ├── api/
 │   │   │   ├── auth/         # Better Auth OAuth & credentials handlers
-│   │   │   ├── notes/        # Full CRUD, search, and batch actions
+│   │   │   ├── notes/        # Full CRUD, search, Redis cache-aside, and batch actions
 │   │   │   │   └── [id]/     # Single note endpoints, /lock, /unlock
 │   │   │   ├── upload/       # Cloudinary/S3 media upload API
 │   │   │   └── user/         # User profile and avatar management
 │   │   ├── login/            # Authentication login page
 │   │   ├── register/         # Account registration page
-│   │   ├── layout.tsx        # Root HTML layout with default dark theme
+│   │   ├── layout.tsx        # Root HTML layout with SSR session & pre-cached notes hydration
 │   │   └── globals.css       # Global styles and Luna CSS variables
 │   ├── components/
 │   │   ├── auth/             # GoogleAuthButton, AuthPromptModal
-│   │   ├── layout/           # Sticky Header, Responsive Sidebar, Omnibox search
+│   │   ├── layout/           # Sticky Header (zero auth flicker), Responsive Sidebar, Omnibox search
 │   │   ├── notes/            # CreateNoteBar, NoteCard, NoteGrid, LockModal, UnlockModal
 │   │   ├── profile/          # ProfileModal with customizable avatar
-│   │   ├── providers/        # NotesProvider (global state), ThemeProvider
+│   │   ├── providers/        # NotesProvider (global pre-cached state), ThemeProvider
 │   │   └── ui/               # Reusable buttons, badges, modals, grips
 │   ├── hooks/                # useNotes, useTheme custom React hooks
-│   ├── lib/                  # Database connection, auth config, upload helpers
+│   ├── lib/                  # Database connection, auth config, Redis client, upload helpers
+│   │   ├── server/           # Server-side data fetchers (getServerNotes)
+│   │   ├── redis.ts          # Singleton Redis client and cache-aside helpers
 │   ├── models/               # Mongoose schemas (NoteModel)
 │   └── types/                # Note, Color, User, and ViewMode TypeScript definitions
 ```
@@ -161,6 +171,9 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 # Google Social OAuth Provider
 GOOGLE_CLIENT_ID=your-google-client-id.apps.googleusercontent.com
 GOOGLE_CLIENT_SECRET=your-google-client-secret
+
+# Redis Cloud Caching Configuration
+REDIS_URL="redis://default:<password>@<host>:<port>"
 
 # Media Storage (Optional for Cloudinary / AWS S3)
 CLOUDINARY_CLOUD_NAME=your_cloud_name
