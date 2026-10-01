@@ -41,7 +41,8 @@ interface NotesContextType {
   selectAll: (ids?: string[]) => void;
   clearSelection: () => void;
   isAuthenticated: boolean;
-  currentUser: { id: string; email: string; name?: string | null } | null;
+  currentUser: { id: string; email: string; name?: string | null; image?: string | null } | null;
+  session: AuthSession | null;
   requireAuth: (actionName?: string) => boolean;
   isAuthModalOpen: boolean;
   openAuthModal: (actionName?: string) => void;
@@ -88,8 +89,24 @@ export function NotesProvider({
   initialNotes,
 }: NotesProviderProps) {
   const router = useRouter();
-  const { data: clientSession } = useSession();
-  const session = clientSession !== undefined ? clientSession : initialSession;
+  const { data: clientSession, isPending } = useSession();
+
+  // Stable session determination:
+  // 1. If clientSession has user data, use clientSession.
+  // 2. If client session check is pending, retain initialSession from SSR.
+  // 3. If clientSession check finished and has no user, user is logged out (null).
+  const session: AuthSession | null = useMemo(() => {
+    if (clientSession?.user) {
+      return clientSession as AuthSession;
+    }
+    if (isPending && initialSession?.user) {
+      return initialSession;
+    }
+    if (!isPending && !clientSession?.user) {
+      return null;
+    }
+    return initialSession || null;
+  }, [clientSession, isPending, initialSession]);
 
   // Hydrate initial notes from SSR/Redis cache to avoid loading skeleton flicker
   const [notes, setNotes] = useState<Note[]>(initialNotes || []);
@@ -130,13 +147,16 @@ export function NotesProvider({
 
   const userId = session?.user?.id;
   const isAuthenticated = Boolean(session?.user);
-  const currentUser = session?.user
-    ? {
-        id: session.user.id,
-        email: session.user.email,
-        name: session.user.name,
-      }
-    : null;
+  const currentUser = useMemo(() => {
+    return session?.user
+      ? {
+          id: session.user.id,
+          email: session.user.email,
+          name: session.user.name,
+          image: session.user.image,
+        }
+      : null;
+  }, [session?.user]);
 
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authActionTitle, setAuthActionTitle] = useState('create notes');
@@ -197,10 +217,12 @@ export function NotesProvider({
     let ignore = false;
 
     async function loadInitialNotes() {
-      // If user is not logged in, clear notes immediately and stop loading
+      // If user is not logged in and auth check has finished, clear notes
       if (!userId) {
-        setNotes([]);
-        setIsLoading(false);
+        if (!isPending) {
+          setNotes([]);
+          setIsLoading(false);
+        }
         return;
       }
 
@@ -235,7 +257,7 @@ export function NotesProvider({
     return () => {
       ignore = true;
     };
-  }, [userId]);
+  }, [userId, isPending, initialNotes]);
 
   // Background Auto-lock timer for notes unlocked past 3 hours
   useEffect(() => {
@@ -1159,6 +1181,7 @@ export function NotesProvider({
         clearSelection,
         isAuthenticated,
         currentUser,
+        session,
         requireAuth,
         isAuthModalOpen,
         openAuthModal,

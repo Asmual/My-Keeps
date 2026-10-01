@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 import { useNotes } from '@/hooks/useNotes';
 import { useTheme } from '@/hooks/useTheme';
-import { useSession, signOut } from '@/lib/auth-client';
+import { signOut } from '@/lib/auth-client';
 import { Button } from '@/components/ui/Button';
 import { ProfileModal } from '@/components/profile/ProfileModal';
 import type { AuthSession } from '@/lib/auth/session';
@@ -30,10 +30,10 @@ interface HeaderProps {
 
 export function Header({ initialSession }: HeaderProps = {}) {
   const router = useRouter();
-  const { data: clientSession } = useSession();
-  // Prioritize clientSession once resolved, fallback to server-rendered initialSession to eliminate flicker
-  const session = clientSession !== undefined ? clientSession : initialSession;
   const {
+    session: contextSession,
+    currentUser,
+    isAuthenticated,
     searchQuery,
     setSearchQuery,
     viewMode,
@@ -41,6 +41,10 @@ export function Header({ initialSession }: HeaderProps = {}) {
     toggleSidebar,
   } = useNotes();
   const { resolvedTheme, toggleTheme } = useTheme();
+
+  // Unified single source of truth for session:
+  // Prioritize contextSession, fallback to server-rendered initialSession during SSR
+  const session = contextSession || initialSession;
 
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
@@ -112,9 +116,13 @@ export function Header({ initialSession }: HeaderProps = {}) {
   const handleSignOut = async () => {
     setShowUserMenu(false);
     try {
+      const userId = session?.user?.id || session?.user?.email;
+      if (userId && typeof window !== 'undefined') {
+        localStorage.removeItem(`mykeeps_user_avatar_${userId}`);
+      }
       await signOut();
       toast.success('Signed out successfully');
-      router.push('/');
+      router.push('/login');
       router.refresh();
     } catch {
       toast.error('Failed to sign out');

@@ -29,24 +29,36 @@ export interface AuthSession {
  */
 export async function getServerSession(): Promise<AuthSession | null> {
   try {
-    const cookieStore = await cookies();
-    const token =
-      cookieStore.get('better-auth.session_token')?.value ||
-      cookieStore.get('__Secure-better-auth.session_token')?.value;
-
-    if (!token) {
-      return null;
-    }
-
-    // 1. Check Redis Cache for ultra-fast session lookup (<2ms)
-    const cacheKey = `session:token:${token}`;
-    const cached = await getCachedData<AuthSession>(cacheKey);
-    if (cached && cached.user) {
-      return cached;
-    }
-
-    // 2. Fallback to Better Auth database verification
     const reqHeaders = await headers();
+    const cookieStore = await cookies();
+
+    // Find any session token cookie across prefixes (__Secure-, better-auth., etc.)
+    const allCookies = cookieStore.getAll();
+    const sessionCookie = allCookies.find(
+      (c) => c.name.endsWith('session_token') || c.name.includes('session_token')
+    );
+    const rawToken = sessionCookie?.value;
+    const cleanToken = rawToken
+      ? rawToken.includes('.')
+        ? rawToken.split('.')[0]
+        : rawToken
+      : undefined;
+
+    // 1. Check Redis Cache first for ultra-fast session lookup (<2ms)
+    if (cleanToken) {
+      const cached = await getCachedData<AuthSession>(`session:token:${cleanToken}`);
+      if (cached && cached.user) {
+        return cached;
+      }
+    }
+    if (rawToken && rawToken !== cleanToken) {
+      const cached = await getCachedData<AuthSession>(`session:token:${rawToken}`);
+      if (cached && cached.user) {
+        return cached;
+      }
+    }
+
+    // 2. Database verification via Better Auth API
     const serverSession = await auth.api.getSession({
       headers: reqHeaders,
     });
@@ -69,8 +81,18 @@ export async function getServerSession(): Promise<AuthSession | null> {
           : undefined,
       };
 
-      // Cache session in Redis for 120 seconds
-      await setCachedData(cacheKey, formattedSession, 120);
+      // Cache session in Redis for 120 seconds across all token variants
+      const serverToken = serverSession.session?.token;
+      if (serverToken) {
+        await setCachedData(`session:token:${serverToken}`, formattedSession, 120);
+      }
+      if (cleanToken && cleanToken !== serverToken) {
+        await setCachedData(`session:token:${cleanToken}`, formattedSession, 120);
+      }
+      if (rawToken && rawToken !== serverToken) {
+        await setCachedData(`session:token:${rawToken}`, formattedSession, 120);
+      }
+
       return formattedSession;
     }
 
@@ -89,6 +111,10 @@ export async function getServerSession(): Promise<AuthSession | null> {
  */
 export async function invalidateServerSession(token?: string): Promise<void> {
   if (token) {
+    const cleanToken = token.includes('.') ? token.split('.')[0] : token;
     await invalidateCache(`session:token:${token}`);
+    if (cleanToken !== token) {
+      await invalidateCache(`session:token:${cleanToken}`);
+    }
   }
 }

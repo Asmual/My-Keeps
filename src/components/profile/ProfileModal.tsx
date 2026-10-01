@@ -13,6 +13,7 @@ import {
   Trash2,
 } from 'lucide-react';
 import { useSession } from '@/lib/auth-client';
+import { useNotes } from '@/hooks/useNotes';
 import { Button } from '@/components/ui/Button';
 import { cn } from '@/lib/utils';
 import { uploadMedia } from '@/lib/upload';
@@ -36,7 +37,9 @@ export function ProfileModal({
   onClose,
   onProfileUpdated,
 }: ProfileModalProps) {
-  const { data: session } = useSession();
+  const { session: contextSession } = useNotes();
+  const { data: clientSession } = useSession();
+  const session = contextSession || clientSession;
   const isMounted = useSyncExternalStore(
     emptySubscribe,
     () => true,
