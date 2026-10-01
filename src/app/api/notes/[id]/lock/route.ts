@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/db/mongoose';
 import { NoteModel } from '@/models/Note';
 import { hashNotePassword } from '@/lib/security';
+import { invalidateUserNotesCache } from '@/lib/redis';
 import mongoose from 'mongoose';
 
 export async function POST(
@@ -40,6 +41,10 @@ export async function POST(
       }
 
       const { _id, password: _pwd, __v, ...rest } = (reLocked as unknown) as Record<string, unknown>;
+
+      if (userId) {
+        await invalidateUserNotesCache(String(userId));
+      }
 
       return NextResponse.json({
         success: true,
@@ -82,6 +87,10 @@ export async function POST(
     }
 
     const { _id, password: _pwd, __v, ...rest } = (updated as unknown) as Record<string, unknown>;
+
+    if (userId) {
+      await invalidateUserNotesCache(String(userId));
+    }
 
     return NextResponse.json({
       success: true,

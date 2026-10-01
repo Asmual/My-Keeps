@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/db/mongoose';
 import { ObjectId } from 'mongodb';
+import { getCachedData, setCachedData, invalidateCache } from '@/lib/redis';
 
 export async function GET(request: NextRequest) {
   try {
@@ -13,6 +14,12 @@ export async function GET(request: NextRequest) {
         { success: false, error: 'userId or email is required' },
         { status: 400 }
       );
+    }
+
+    const cacheKey = `user:profile:${userId || email}`;
+    const cached = await getCachedData<{ success: boolean; user: unknown }>(cacheKey);
+    if (cached) {
+      return NextResponse.json(cached);
     }
 
     const mongoose = await connectToDatabase();
@@ -54,7 +61,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    return NextResponse.json({
+    const payload = {
       success: true,
       user: {
         id: String(user.id || user._id),
@@ -66,7 +73,10 @@ export async function GET(request: NextRequest) {
         createdAt: user.createdAt,
         updatedAt: user.updatedAt,
       },
-    });
+    };
+
+    await setCachedData(cacheKey, payload, 300);
+    return NextResponse.json(payload);
   } catch (error) {
     return NextResponse.json(
       { success: false, error: (error as Error).message },
@@ -138,6 +148,13 @@ export async function PATCH(request: NextRequest) {
         { status: 404 }
       );
     }
+
+    // Invalidate Redis profile & session cache
+    if (userId) await invalidateCache(`user:profile:${userId}`);
+    if (email) await invalidateCache(`user:profile:${email}`);
+    if (updated.id) await invalidateCache(`user:profile:${updated.id}`);
+    if (updated.email) await invalidateCache(`user:profile:${updated.email}`);
+    await invalidateCache('session:token:*');
 
     return NextResponse.json({
       success: true,

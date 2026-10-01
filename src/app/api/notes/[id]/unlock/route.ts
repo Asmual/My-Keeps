@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/db/mongoose';
 import { NoteModel } from '@/models/Note';
 import { verifyNotePassword } from '@/lib/security';
+import { invalidateUserNotesCache } from '@/lib/redis';
 import mongoose from 'mongoose';
 
 export async function POST(
@@ -71,6 +72,10 @@ export async function POST(
     const obj = (note.toObject() as unknown) as Record<string, unknown>;
     delete obj.password;
     delete obj.__v;
+
+    if (userId) {
+      await invalidateUserNotesCache(String(userId));
+    }
 
     return NextResponse.json({
       success: true,

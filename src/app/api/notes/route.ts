@@ -3,6 +3,7 @@ import mongoose from 'mongoose';
 import { connectToDatabase } from '@/lib/db/mongoose';
 import { NoteModel } from '@/models/Note';
 import { hashNotePassword } from '@/lib/security';
+import { getCachedData, setCachedData, invalidateUserNotesCache } from '@/lib/redis';
 
 export async function GET(request: NextRequest) {
   try {
@@ -13,6 +14,13 @@ export async function GET(request: NextRequest) {
     // Strict multi-tenant isolation: Unauthenticated requests or missing userId return empty array
     if (!userId || !userId.trim()) {
       return NextResponse.json({ success: true, count: 0, data: [] });
+    }
+
+    // Check Redis cache first (sub-millisecond response)
+    const cacheKey = `notes:${userId.trim()}:${filter || 'all'}`;
+    const cached = await getCachedData<{ success: boolean; count: number; data: unknown[] }>(cacheKey);
+    if (cached) {
+      return NextResponse.json(cached);
     }
 
     await connectToDatabase();
@@ -84,7 +92,9 @@ export async function GET(request: NextRequest) {
       };
     });
 
-    return NextResponse.json({ success: true, count: notes.length, data: notes });
+    const responseData = { success: true, count: notes.length, data: notes };
+    await setCachedData(cacheKey, responseData, 300);
+    return NextResponse.json(responseData);
   } catch (error) {
     return NextResponse.json(
       { success: false, error: (error as Error).message },
@@ -148,6 +158,9 @@ export async function POST(request: NextRequest) {
       isLocked: Boolean(noteObj.isLocked),
     };
 
+    // Invalidate cached notes for this user
+    await invalidateUserNotesCache(body.userId.trim());
+
     return NextResponse.json({ success: true, data: result }, { status: 201 });
   } catch (error) {
     return NextResponse.json(
@@ -180,6 +193,7 @@ export async function DELETE(request: NextRequest) {
       };
 
       const res = await NoteModel.deleteMany(query);
+      await invalidateUserNotesCache(userId.trim());
       return NextResponse.json({
         success: true,
         message: 'Trash emptied successfully (locked notes preserved)',
@@ -213,6 +227,7 @@ export async function DELETE(request: NextRequest) {
       };
 
       const res = await NoteModel.deleteMany(query);
+      await invalidateUserNotesCache(userId.trim());
       return NextResponse.json({
         success: true,
         message: `${res.deletedCount} notes deleted`,

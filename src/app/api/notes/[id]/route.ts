@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/db/mongoose';
 import { NoteModel } from '@/models/Note';
 import { hashNotePassword, verifyNotePassword } from '@/lib/security';
+import { invalidateUserNotesCache } from '@/lib/redis';
 import mongoose from 'mongoose';
 
 export async function GET(
@@ -142,6 +143,11 @@ export async function PATCH(
       rest.audioUrl = null;
     }
 
+    const targetUserId = (updatedNote as unknown as Record<string, unknown>).userId || userId;
+    if (targetUserId) {
+      await invalidateUserNotesCache(String(targetUserId));
+    }
+
     return NextResponse.json({
       success: true,
       data: {
@@ -198,6 +204,11 @@ export async function DELETE(
     }
 
     await NoteModel.deleteOne(query);
+
+    const targetUserId = note.userId || userId;
+    if (targetUserId) {
+      await invalidateUserNotesCache(String(targetUserId));
+    }
 
     return NextResponse.json({
       success: true,
