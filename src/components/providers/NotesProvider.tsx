@@ -95,6 +95,13 @@ export function NotesProvider({
   const [notes, setNotes] = useState<Note[]>(initialNotes || []);
   const [isLoading, setIsLoading] = useState(!initialNotes && Boolean(initialSession?.user));
 
+  useEffect(() => {
+    if (initialNotes && initialNotes.length > 0) {
+      setNotes(initialNotes);
+      setIsLoading(false);
+    }
+  }, [initialNotes]);
+
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [selectedLabel, setSelectedLabel] = useState<string | null>(null);
@@ -195,9 +202,10 @@ export function NotesProvider({
         setNotes([]);
         setIsLoading(false);
         return;
+      // Prevent skeleton flash if notes are already pre-rendered by SSR/Redis
+      if (!initialNotes || initialNotes.length === 0) {
+        setIsLoading(true);
       }
-
-      setIsLoading(true);
       try {
         if (typeof window !== 'undefined') {
           localStorage.removeItem('mykeeps-notes');

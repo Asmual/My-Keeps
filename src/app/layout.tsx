@@ -6,6 +6,7 @@ import { NotesProvider } from '@/components/providers/NotesProvider';
 import { Toaster } from 'react-hot-toast';
 import { NoteEditModal } from '@/components/notes/NoteEditModal';
 import { getServerSession } from '@/lib/auth/session';
+import { getServerNotes } from '@/lib/server/notes';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -32,6 +33,9 @@ export default async function RootLayout({
   children: React.ReactNode;
 }) {
   const session = await getServerSession();
+  const initialNotes = session?.user?.id
+    ? await getServerNotes(session.user.id)
+    : [];
 
   return (
     <html
@@ -62,7 +66,7 @@ export default async function RootLayout({
         className="min-h-full flex flex-col bg-background text-foreground antialiased selection:bg-amber-500/20 selection:text-amber-900 dark:selection:text-amber-200"
       >
         <ThemeProvider>
-          <NotesProvider initialSession={session}>
+          <NotesProvider initialSession={session} initialNotes={initialNotes}>
             {children}
             <NoteEditModal />
             <Toaster
