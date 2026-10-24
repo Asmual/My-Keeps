@@ -53,3 +53,14 @@ director.js
 
 *.orc
 *.eot
+
+.vscode/
+run.bat
+git.txt
+myGit.txt
+AGENTS.md
+CLAUDE.md
+.agent*
+.cloud*
+.env
+.env.local
