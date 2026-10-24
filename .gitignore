@@ -53,3 +53,11 @@ director.js
 
 *.orc
 *.eot
+
+run.bat
+git.txt
+myGit.txt
+AGENTS.md
+CLAUDE.md
+.agent*
+.cloud*
