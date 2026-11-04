@@ -63,3 +63,11 @@ CLAUDE.md
 .cloud*
 
 public/fonts/
+
+# Environment variables & secrets (added by GitHub Guardian)
+.env
+.env.*
+!.env.sample
+.envrc
+.venv/
+venv/
